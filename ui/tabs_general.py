@@ -113,6 +113,31 @@ class GeneralTabMixin:
         f.addRow("", row)
         lay.addWidget(catsbox)
 
+        sp = QGroupBox("Informations affichées (specs)")
+        f = QFormLayout(sp)
+        f.setLabelAlignment(Qt.AlignRight)
+        # une ligne par spec : case « afficher » + champ de valeur
+        # forcée (vide = valeur OpenAgenda). Date : toujours affichée.
+        self._spec_rows = {}
+        for key in ("Durée", "Lieu", "Tarif", "Public",
+                    "Accessibilité"):
+            cb = QCheckBox(key)
+            cb.setChecked(True)
+            ov = QLineEdit(placeholderText="valeur forcée (optionnel)")
+            ov.setMinimumWidth(220)
+            row = QHBoxLayout()
+            row.addWidget(cb)
+            row.addWidget(ov, 1)
+            f.addRow(row)
+            self._spec_rows[key] = (cb, ov)
+        self.next_label = QLineEdit(
+            placeholderText="Prochaine séance : ")
+        self.next_label.setToolTip(
+            "Préfixe de la spec Date pour les événements à plusieurs "
+            "séances — vide = afficher la date seule")
+        f.addRow("Préfixe récurrent", self.next_label)
+        lay.addWidget(sp)
+
         sers = QGroupBox("Séries éditoriales — keyword OA = Libellé "
                          "[| logo.png] par ligne")
         f = QFormLayout(sers)

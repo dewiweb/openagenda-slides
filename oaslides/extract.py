@@ -229,6 +229,21 @@ def parse_cats(text):
     return [t.strip() for t in (text or "").split(",") if t.strip()]
 
 
+def parse_kv(text):
+    """« Clé = valeur » par ligne → dict (réglage spec_overrides).
+    Lignes vides/# ignorées."""
+    out = {}
+    for line in (text or "").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, _, v = line.partition("=")
+        k, v = k.strip(), v.strip()
+        if k:
+            out[k] = v
+    return out
+
+
 def series_logo(text, label):
     """Chemin du logo associé au libellé de série, ou None."""
     return next((g for _, l, g in parse_series(text)

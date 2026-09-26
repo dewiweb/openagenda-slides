@@ -254,6 +254,26 @@ class OaMapTest(unittest.TestCase):
         self.assertTrue(ev["specs"]["Date"].startswith("Prochaine"))
         self.assertEqual(ev["specs"]["Durée"], "1h30")
 
+    def test_spec_prefs(self):
+        prefs = {
+            "next_label": "",                       # pas de préfixe
+            "specs_show": {"Durée", "Tarif"},       # Lieu/Public masqués
+            "spec_overrides": {"Tarif": "Gratuit",
+                               "Lieu": "Salle A"},  # ajout forcé
+        }
+        ev = oa._map_legacy(_legacy_ev(), prefs=prefs)
+        self.assertNotIn("Prochaine", ev["specs"]["Date"])
+        self.assertNotIn("Public", ev["specs"])
+        self.assertEqual(ev["specs"]["Tarif"], "Gratuit")
+        # « Lieu » masqué dans specs_show : l'override ne le réintroduit
+        # pas non plus
+        self.assertNotIn("Lieu", ev["specs"])
+        # override sur une spec affichée qui n'existe pas → ajoutée
+        prefs["specs_show"] = {"Durée", "Lieu"}
+        ev = oa._map_legacy(
+            _legacy_ev(location=None, locationName=""), prefs=prefs)
+        self.assertEqual(ev["specs"]["Lieu"], "Salle A")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -74,9 +74,13 @@ def _duration(begin, end):
     return f"{h}h{m:02d}" if m else (f"{h}h" if h else f"{mins} min")
 
 
-def _date_spec(timings):
+DEFAULT_NEXT_LABEL = "Prochaine séance : "
+
+
+def _date_spec(timings, next_label=DEFAULT_NEXT_LABEL):
     """Construit la spec Date + compteur de séances + durée + bornes.
     timings : liste de tuples locaux (begin, end) triés par début.
+    `next_label` préfixe les événements récurrents (vide = date seule).
     Retourne (date_spec, nb_séances, durée, _dt, _dt_end, pinned)."""
     today = datetime.date.today()
     future = [t for t in timings if t[1][:3] >=
@@ -114,8 +118,8 @@ def _date_spec(timings):
     # « Prochaine séance : » quand l'événement est récurrent
     nx = next(iter(future))
     date_spec = f"{_fmt_day(nx[0])} à {_fmt_time(nx[0])}"
-    if len(future) > 1:
-        date_spec = f"Prochaine séance : {date_spec}"
+    if len(future) > 1 and next_label:
+        date_spec = f"{next_label}{date_spec}"
     return (date_spec, len(future),
             _duration(nx[0], nx[1]), nx[0], nx[0], False)
 
@@ -171,13 +175,16 @@ def _pick_tag_groups(e, cat_group=""):
 def _base_map(e, cat_value, cat_label, public_label, kws, cond, timings,
               title, url, desc, desc_long, html_txt, image, credit, lieu,
               access_codes, age=None, series_map=None, tag_slugs=None,
-              tz=None):
+              tz=None, prefs=None):
     """Construit le dict événement commun (v2 et legacy convergent ici).
-    `e` ne sert que de référence pour l'uid/canonicalUrl éventuels."""
+    `prefs` porte les réglages d'affichage des specs : next_label
+    (préfixe récurrent), specs_show (clés affichées, None = toutes),
+    spec_overrides (valeurs forcées)."""
+    prefs = prefs or {}
     pairs = _timings_pairs(timings, tz)
     if pairs:
-        date_spec, n_sessions, dur, dt, dt_end, pinned = (
-            _date_spec(pairs))
+        date_spec, n_sessions, dur, dt, dt_end, pinned = _date_spec(
+            pairs, prefs.get("next_label", DEFAULT_NEXT_LABEL))
     else:
         # aucun créneau : événement à durée indéterminée
         date_spec, n_sessions, dur = "En continu", 0, ""
@@ -198,6 +205,19 @@ def _base_map(e, cat_value, cat_label, public_label, kws, cond, timings,
         specs["Public"] = pub
     elif age and age.get("min"):
         specs["Public"] = f"Dès {age['min']} ans"
+
+    # préférences d'affichage : masquage + valeurs forcées (le Lieu
+    # d'un agenda peut par ex. désigner le point de diffusion, pas la
+    # salle — l'utilisateur le remplace ou le masque)
+    show = prefs.get("specs_show")
+    if show is not None:
+        specs = {k: v for k, v in specs.items()
+                 if k == "Date" or k in show}
+    for k, v in (prefs.get("spec_overrides") or {}).items():
+        # la valeur forcée remplace OU ajoute la spec (un agenda dont le
+        # lieu désigne autre chose peut être corrigé globalement)
+        if v and (show is None or k in show or k == "Date"):
+            specs[k] = v
 
     tag = cat_label or "Événement"
     desc_md = _norm_ws(desc) or _norm_ws(desc_long)
@@ -243,7 +263,7 @@ def _base_map(e, cat_value, cat_label, public_label, kws, cond, timings,
 
 
 def _map_v2(e, cat_opts, pub_opts, agenda, series_map=None,
-            cat_group=""):
+            cat_group="", prefs=None):
     cat_id = e.get("categorie")
     cat_value, cat_label = (cat_opts.get(cat_id) or (None, None))
     pub_ids = e.get("publics") or []
@@ -278,7 +298,7 @@ def _map_v2(e, cat_opts, pub_opts, agenda, series_map=None,
         image, e.get("imageCredits") or "",
         (e.get("location") or {}).get("name", ""),
         acc_codes, e.get("age"), series_map, tag_slugs,
-        tz=_tz(e.get("location")))
+        tz=_tz(e.get("location")), prefs=prefs)
     ev["online"] = e.get("attendanceMode") == 2
     if not e.get("timings"):
         # timings indisponibles même sur le détail : le texte
@@ -291,7 +311,7 @@ def _map_v2(e, cat_opts, pub_opts, agenda, series_map=None,
     return ev
 
 
-def _map_legacy(e, series_map=None, cat_group=""):
+def _map_legacy(e, series_map=None, cat_group="", prefs=None):
     cat_value, cat_label, pubs, tag_slugs = _pick_tag_groups(e, cat_group)
     kws = [k for k in ((e.get("keywords") or {}).get("fr") or []) if k]
     cond = (e.get("conditions") or {}).get("fr")
@@ -308,7 +328,7 @@ def _map_legacy(e, series_map=None, cat_group=""):
         e.get("originalImage") or e.get("image"),
         e.get("imageCredits") or "", lieu,
         e.get("accessibility") or [], e.get("age"), series_map,
-        tag_slugs, tz=_tz(loc))
+        tag_slugs, tz=_tz(loc), prefs=prefs)
     ev["online"] = e.get("attendanceMode") == 2
     if not e.get("timings"):
         # le texte éditorial « range » vaut mieux que « En continu »
@@ -338,7 +358,7 @@ def _resolve_uid(agenda):
     return int(m.group(1))
 
 
-def _v2_events(agenda, key, series_map=None, cat_group=""):
+def _v2_events(agenda, key, series_map=None, cat_group="", prefs=None):
     """API v2 officielle : schéma (libellés catégorie/public) puis
     événements à venir paginés."""
     a = _get(f"{API}/agendas/{agenda}",
@@ -378,11 +398,12 @@ def _v2_events(agenda, key, series_map=None, cat_group=""):
                     e["timings"] = full["timings"]
             except Exception:
                 pass  # le texte dateRange servira de spécification
-    return [_map_v2(e, cat_opts, pub_opts, agenda, series_map, cat_group)
+    return [_map_v2(e, cat_opts, pub_opts, agenda, series_map,
+                    cat_group, prefs)
             for e in events]
 
 
-def _legacy_events(agenda, series_map=None, cat_group=""):
+def _legacy_events(agenda, series_map=None, cat_group="", prefs=None):
     """Export public legacy (sans clé, déprécié) : tout l'historique,
     filtré côté client aux événements pas terminés."""
     uid = _resolve_uid(agenda)
@@ -414,11 +435,24 @@ def _legacy_events(agenda, series_map=None, cat_group=""):
                 continue  # rien pour dater → on écarte
         if last < today:
             continue  # terminé — l'export n'a pas de filtre serveur
-        out.append(_map_legacy(e, series_map, cat_group))
+        out.append(_map_legacy(e, series_map, cat_group, prefs))
     return out
 
 
-def oa_list_events(cfg):
+def _spec_prefs(cfg):
+    """Réglages d'affichage des specs → dict passé au mapping :
+    next_label, specs_show (None = toutes), spec_overrides."""
+    from .extract import parse_cats, parse_kv
+    shown = parse_cats(cfg.get("specs_show", ""))
+    return {
+        "next_label": cfg.get("next_label", DEFAULT_NEXT_LABEL),
+        # specs_show vide = toutes ; sinon seules les clés listées
+        "specs_show": set(shown) if shown else None,
+        "spec_overrides": parse_kv(cfg.get("spec_overrides", "")),
+    }
+
+
+def oa_list_events(cfg, series_map=None):
     """Événements OpenAgenda selon les réglages : `oa_api_key` présent
     → API v2 ; sinon export legacy public."""
     agenda = (cfg.get("oa_agenda") or "").strip()
@@ -426,14 +460,16 @@ def oa_list_events(cfg):
         raise RuntimeError("Aucun agenda configuré (réglage "
                            "« Agenda OpenAgenda » vide)")
     key = (cfg.get("oa_api_key") or "").strip()
-    from .extract import parse_series_map
-    series_map = parse_series_map(cfg.get("series_map", "")) or None
+    if series_map is None:
+        from .extract import parse_series_map
+        series_map = parse_series_map(cfg.get("series_map", "")) or None
     cat_group = (cfg.get("tag_group") or "").strip()
+    prefs = _spec_prefs(cfg)
     if key:
         print("  source : OpenAgenda API v2")
-        return _v2_events(agenda, key, series_map, cat_group)
+        return _v2_events(agenda, key, series_map, cat_group, prefs)
     print("  source : export OpenAgenda (sans clé — endpoint déprécié)")
-    return _legacy_events(agenda, series_map, cat_group)
+    return _legacy_events(agenda, series_map, cat_group, prefs)
 
 
 def list_tag_groups(agenda, limit=100):

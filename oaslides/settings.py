@@ -30,6 +30,12 @@ DEFAULTS = {
     "gen_categories": "",       # slugs/libellés de tags retenus,
     #                           virgules (vide = tout l'agenda)
     "series_map": "",           # « keyword = Libellé | logo.png »/ligne
+    # ——— specs affichées sur les diapos ———
+    "specs_show": "",           # clés affichées, virgules — vide =
+    #                           toutes (Date toujours affichée)
+    "spec_overrides": "",       # « Clé = valeur forcée »/ligne
+    "next_label": "Prochaine séance : ",  # préfixe récurrent (vide =
+    #                                     date seule)
     # ——— fenêtre de génération ———
     "interval_min": 0,
     "sched_times": "",

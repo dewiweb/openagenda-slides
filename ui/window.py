@@ -189,6 +189,14 @@ class MainWindow(GeneralTabMixin, DestinationsTabMixin, GalleryTabMixin,
             gen_portrait=int(self.gen_pt.isChecked()),
             portrait_format=self.portrait_fmt.currentData(),
             gen_categories=self.gen_cats.text().strip(),
+            specs_show=",".join(k for k, (cb, _) in
+                                self._spec_rows.items()
+                                if cb.isChecked()),
+            spec_overrides="\n".join(
+                f"{k} = {ov.text().strip()}"
+                for k, (_, ov) in self._spec_rows.items()
+                if ov.text().strip()),
+            next_label=self.next_label.text(),
             ftp_host=self.ftp_host.text().strip(),
             ftp_port=self.ftp_port.value(),
             ftp_path=self.ftp_path.text().strip(),
@@ -331,6 +339,15 @@ class MainWindow(GeneralTabMixin, DestinationsTabMixin, GalleryTabMixin,
         self.portrait_fmt.setCurrentIndex(max(i, 0))
         self.portrait_fmt.setEnabled(bool(s["gen_portrait"]))
         self.gen_cats.setText(s.get("gen_categories") or "")
+        shown = {t.strip() for t in
+                 (s.get("specs_show") or "").split(",") if t.strip()}
+        from oaslides.extract import parse_kv
+        ovr = parse_kv(s.get("spec_overrides") or "")
+        for k, (cb, ov) in self._spec_rows.items():
+            cb.setChecked(not shown or k in shown)  # vide = tout
+            ov.setText(ovr.get(k, ""))
+        self.next_label.setText(
+            s.get("next_label", "Prochaine séance : "))
         self.ftp_host.setText(s["ftp_host"])
         self.ftp_port.setValue(s["ftp_port"] or 21)
         self.ftp_path.setText(s["ftp_path"])
