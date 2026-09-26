@@ -38,7 +38,7 @@ sortie/  →  destination/
 | **Tags retenus** | slugs/libellés à inclure, virgules (vide = tout) |
 | **Structure / URL / logo** | nom, page programme, logo SVG/PNG |
 | **Fond / Accentuation** | couleurs `#rrggbb` des diapos |
-| **Fonte** | famille CSS — déposez des `.woff2/.ttf` dans `data/fonts/` |
+| **Fonte** | famille CSS — déposez des `.woff2/.ttf` dans `oaslides-data/fonts/` |
 | **Séries éditoriales** | `keyword OA = Libellé [| logo.png]`/ligne |
 
 La taxonomie vient des **tagGroups** de chaque agenda (bouton

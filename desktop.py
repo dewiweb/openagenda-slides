@@ -8,8 +8,8 @@ player de diaporama plein écran, icône de zone de notification
 dans le package local `oaslides/` — pas de serveur web, pas de
 dépendance à un dépôt externe.
 
-Données dans ./data à côté de l'exe/AppImage ; journal dans
-./data/app.log. --diag : diagnostique le rendu (data/diag.log).
+Données dans ./oaslides-data à côté de l'exe/AppImage ; journal dans
+./oaslides-data/app.log. --diag : diagnostique le rendu (oaslides-data/diag.log).
 """
 
 import os
@@ -32,7 +32,10 @@ else:
     ASSETS = BASE / "assets"
     ICON = BASE / "appimage" / "oaslides.png"
 
-DATA = BASE / "data"
+# dossier propre à l'app : « data » nu se télescoperait avec le
+# data/ d'autres apps portables (ex. nextevents) posées dans le même
+# dossier que l'AppImage/l'exe
+DATA = BASE / "oaslides-data"
 try:
     DATA.mkdir(exist_ok=True)
 except OSError:
@@ -46,7 +49,7 @@ os.environ.setdefault("OASLIDES_ASSET_DIR", str(ASSETS))
 os.environ.setdefault("OASLIDES_FONT_DIR", str(DATA / "fonts"))
 os.environ.setdefault("OASLIDES_CACHE_DIR", str(DATA / "cache"))
 
-# Fontes personnalisées : déposer des .woff2/.ttf dans data/fonts/
+# Fontes personnalisées : déposer des .woff2/.ttf dans oaslides-data/fonts/
 # (ou assets/fonts dans le bundle) — amorcées si le bundle en contient.
 _seed = ASSETS / "fonts"
 if _seed.is_dir():
@@ -69,7 +72,7 @@ except ImportError:
     pass
 
 if getattr(sys, "frozen", False):
-    # Mode fenêtré : pas de console — journal dans data/app.log (UTF-8,
+    # Mode fenêtré : pas de console — journal dans oaslides-data/app.log (UTF-8,
     # évite aussi les crashs d'encodage cp1252 sur les symboles du journal)
     _log_path = DATA / "app.log"
     try:
@@ -82,7 +85,7 @@ if getattr(sys, "frozen", False):
     _log = open(_log_path, "a", encoding="utf-8", buffering=1)
     sys.stdout = sys.stderr = _log
 
-    # crashs : traceback Python non intercepté → data/crash.log (signalé
+    # crashs : traceback Python non intercepté → oaslides-data/crash.log (signalé
     # au prochain démarrage par ui.app) ; fautes natives Qt (segfault…)
     # → faulthandler dans le même journal, sinon elles restent muettes
     import faulthandler
@@ -105,7 +108,7 @@ if getattr(sys, "frozen", False):
 
 
 def _diag():
-    """Diagnostique le rendu navigateur — écrit data/diag.log."""
+    """Diagnostique le rendu navigateur — écrit oaslides-data/diag.log."""
     import subprocess
     import traceback
 

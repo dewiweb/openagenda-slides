@@ -1,6 +1,7 @@
 build/
 dist/
 data/
+oaslides-data/
 diaporama/
 __pycache__/
 *.pyc

@@ -143,6 +143,7 @@ class GeneralTabMixin:
         self._cats_loading = False
         self._cats_agenda = ""
         self.cats_panel = QWidget()
+        self.cats_panel.setObjectName("catsPanel")
         self.cats_lay = QVBoxLayout(self.cats_panel)
         self.cats_lay.setContentsMargins(0, 0, 0, 0)
         self.cats_lay.setSpacing(4)
@@ -350,6 +351,14 @@ class GeneralTabMixin:
         if not agenda:
             self.tags_lbl.setText("renseignez d'abord l'agenda")
             return
+        # changement d'agenda : catégories, séries et groupe
+        # catégorie sont propres à l'ancien agenda — on les
+        # réinitialise plutôt que de garder des slugs étrangers
+        if self._cats_agenda and agenda != self._cats_agenda:
+            self.gen_cats.clear()
+            self.series_map.clear()
+            self.tag_group.setEditText("")
+            self._cats_reset = True
         self.tags_lbl.setText("découverte des catégories…")
         self._cats_agenda = agenda
         s = self._collect() if hasattr(self, "_collect") else {}
@@ -410,9 +419,12 @@ class GeneralTabMixin:
         finally:
             self._cats_loading = False
         n = sum(len(g["tags"]) for g in groups.values())
+        note = " — filtres de l'ancien agenda réinitialisés" \
+            if getattr(self, "_cats_reset", False) else ""
+        self._cats_reset = False
         self.tags_lbl.setText(
             f"{len(groups)} groupe(s), {n} tag(s) — "
-            "décochez ce qui ne doit pas être généré")
+            "décochez ce qui ne doit pas être généré" + note)
         self.cats_panel.show()
         # la combo « Groupe catégorie » propose les slugs découverts
         # (nom du groupe en infobulle) — saisie libre préservée

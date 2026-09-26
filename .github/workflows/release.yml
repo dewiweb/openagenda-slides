@@ -70,7 +70,7 @@ jobs:
             -ArgumentList "--diag" -PassThru
           if (-not $p.WaitForExit(120000)) { $p.Kill(); throw "--diag a dépassé 120 s" }
           if ($p.ExitCode -ne 0) { throw "l'exe a quitté avec le code $($p.ExitCode)" }
-          $log = "smoke-test\oaslides\data\diag.log"
+          $log = "smoke-test\oaslides\oaslides-data\diag.log"
           if (-not (Test-Path $log)) { throw "diag.log absent — l'exe n'a pas démarré" }
           Get-Content $log -Tail 15
           if (-not (Select-String -Path $log -Pattern "launch .* OK")) {
@@ -142,13 +142,13 @@ jobs:
 
       - name: Smoke test artifact
         # --appimage-extract-and-run : pas besoin de FUSE sur le runner.
-        # L'AppImage écrit data/diag.log à côté du fichier .AppImage.
+        # L'AppImage écrit oaslides-data/diag.log à côté du .AppImage.
         run: |
           chmod +x "dist/$APPIMAGE_NAME"
           timeout 120 "dist/$APPIMAGE_NAME" --appimage-extract-and-run --diag
-          test -f dist/data/diag.log || { echo "diag.log absent"; exit 1; }
-          tail -15 dist/data/diag.log
-          grep -q "launch .* OK" dist/data/diag.log || {
+          test -f dist/oaslides-data/diag.log || { echo "diag.log absent"; exit 1; }
+          tail -15 dist/oaslides-data/diag.log
+          grep -q "launch .* OK" dist/oaslides-data/diag.log || {
             echo "aucun navigateur ne démarre dans l'AppImage"; exit 1; }
 
       - name: Upload artifact
