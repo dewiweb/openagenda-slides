@@ -146,6 +146,7 @@ class DestinationsTabMixin:
 
         def work():
             try:
+                res = "connexion OK ✓"   # les branches peuvent enrichir
                 if proto == "ftp":
                     import ftplib
                     cls = ftplib.FTP_TLS if s["ftp_tls"] else ftplib.FTP
@@ -165,17 +166,16 @@ class DestinationsTabMixin:
                     ftp.quit()
                 elif proto == "oa":
                     # avec clé : API v2 ; sans clé : l'export public
-                    # doit répondre (résolution slug → uid comprise)
-                    from oaslides.oa import API, _get, _resolve_uid
+                    # doit répondre (résolution slug → uid comprise).
+                    # Enrichi : nom public + nb d'événements — le nom
+                    # pré-remplit « Structure » si le champ est vide.
+                    from oaslides.oa import agenda_info
                     agenda = (s.get("oa_agenda") or "").strip()
                     key = (s.get("oa_api_key") or "").strip()
-                    if key:
-                        _get(f"{API}/agendas/{agenda}/events",
-                             params={"key": key, "size": 1})
-                    else:
-                        uid = _resolve_uid(agenda)
-                        _get(f"https://openagenda.com/agendas/{uid}/"
-                             "events.json", params={"limit": 1})
+                    name, total = agenda_info(agenda, key)
+                    res = (f"connexion OK ✓ — « {name} » · "
+                           f"{total} événement(s) publiés")
+                    self.oa_info.emit(name)
                 else:
                     from smbclient import listdir, register_session
                     register_session(s["smb_host"], username=s["smb_user"],
@@ -184,7 +184,6 @@ class DestinationsTabMixin:
                     if s["smb_path"]:
                         path += "\\" + s["smb_path"].strip("/\\")
                     listdir(path)
-                res = "connexion OK ✓"
             except Exception as e:
                 res = f"échec : {e}"
             # Signal → livré dans le thread GUI (un QTimer.singleShot

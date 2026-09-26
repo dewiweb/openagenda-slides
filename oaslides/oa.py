@@ -270,7 +270,7 @@ def _map_v2(e, cat_opts, pub_opts, agenda, series_map=None,
     if isinstance(pub_ids, int):
         pub_ids = [pub_ids]
     pubs = [pub_opts.get(i) for i in pub_ids if i in pub_opts]
-    kws = [k for k in ((e.get("keywords") or {}).get("fr") or []) if k]
+    kws = [k for k in (e.get("keywords", {}).get("fr") or []) if k]
     cond = (e.get("conditions") or {}).get("fr")
     acc = e.get("accessibility") or {}
     acc_codes = [k for k, v in acc.items() if v] \
@@ -313,7 +313,7 @@ def _map_v2(e, cat_opts, pub_opts, agenda, series_map=None,
 
 def _map_legacy(e, series_map=None, cat_group="", prefs=None):
     cat_value, cat_label, pubs, tag_slugs = _pick_tag_groups(e, cat_group)
-    kws = [k for k in ((e.get("keywords") or {}).get("fr") or []) if k]
+    kws = [k for k in (e.get("keywords", {}).get("fr") or []) if k]
     cond = (e.get("conditions") or {}).get("fr")
     loc = e.get("location") or {}
     lieu = loc.get("name") or e.get("locationName") or ""
@@ -356,6 +356,38 @@ def _resolve_uid(agenda):
     if not m:
         raise RuntimeError(f"uid de l'agenda « {agenda} » introuvable")
     return int(m.group(1))
+
+
+def agenda_info(agenda, key=""):
+    """(nom public, nb d'événements publiés) de l'agenda — pour le
+    test de connexion et le pré-remplissage de « Structure ». Clé
+    facultative : v2 si présente, export public sinon."""
+    import html as _html
+    agenda = (agenda or "").strip()
+    if key:
+        a = _get(f"{API}/agendas/{agenda}", params={"key": key}).json()
+        name = a.get("name") or {}
+        name = (name.get("fr") if isinstance(name, dict) else name) \
+            or agenda
+        d = _get(f"{API}/agendas/{agenda}/events",
+                 params={"key": key, "size": 1}).json()
+        return name, d.get("total", 0)
+    if str(agenda).isdigit():
+        uid, page = int(agenda), ""
+    else:
+        page = _get(f"https://openagenda.com/fr/{agenda}").text
+        m = re.search(r"agendas/(\d+)", page)
+        if not m:
+            raise RuntimeError(
+                f"uid de l'agenda « {agenda} » introuvable")
+        uid = int(m.group(1))
+    m = re.search(r'og:title" content="([^"]+)"', page) or \
+        re.search(r"<title>(.*?)</title>", page)
+    name = _html.unescape(m.group(1)).strip() if m else ""
+    name = re.sub(r"\s*[-|–]\s*OpenAgenda.*$", "", name).strip()
+    d = _get(f"https://openagenda.com/agendas/{uid}/events.json",
+             params={"limit": 1}).json()
+    return name, d.get("total", 0)
 
 
 def _v2_events(agenda, key, series_map=None, cat_group="", prefs=None):

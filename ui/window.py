@@ -47,6 +47,8 @@ class MainWindow(GeneralTabMixin, DestinationsTabMixin, GalleryTabMixin,
     thumbs_append = Signal(list, set)  # vignettes + rels décodés (worker)
     regen_done = Signal(str, str)    # rel diapo + message de fin
     update_done = Signal(str, str)   # tag release, url ou erreur
+    preview_done = Signal(str, str)  # chemin PNG aperçu, ou erreur
+    oa_info = Signal(str)            # nom d'agenda découvert (test OA)
 
     def __init__(self, tray_ok, icon_path):
         super().__init__()
@@ -127,6 +129,8 @@ class MainWindow(GeneralTabMixin, DestinationsTabMixin, GalleryTabMixin,
         self.regen_done.connect(self._regen_done)
         self.thumbs_append.connect(self._append_gallery)
         self.update_done.connect(self._on_update_done)
+        self.preview_done.connect(self._on_preview_done)
+        self.oa_info.connect(self._on_oa_info)
 
         self._timer = QTimer(self, interval=500, timeout=self._poll)
         self._timer.start()
@@ -216,7 +220,7 @@ class MainWindow(GeneralTabMixin, DestinationsTabMixin, GalleryTabMixin,
             local_send_portrait=int(self.local_pt.isChecked()),
             close_to_tray=int(self.close_to_tray.isChecked()),
             oa_agenda=self.oa_agenda.text().strip(),
-            tag_group=self.tag_group.text().strip(),
+            tag_group=self.tag_group.currentText().strip(),
             org_name=self.org_name.text().strip(),
             program_url=self.program_url.text().strip(),
             footer_text=self.footer_text.text().strip(),
@@ -304,6 +308,12 @@ class MainWindow(GeneralTabMixin, DestinationsTabMixin, GalleryTabMixin,
         self.save_btn.style().unpolish(self.save_btn)
         self.save_btn.style().polish(self.save_btn)
 
+    def _on_oa_info(self, name):
+        """Test OA réussi → pré-remplit « Structure » du nom public de
+        l'agenda si le champ est encore vide."""
+        if name and not self.org_name.text().strip():
+            self.org_name.setText(name)  # textChanged → dirty
+
     @staticmethod
     def _secret_ph(key, value):
         """Placeholder d'un champ secret — indique où la valeur vit
@@ -371,7 +381,7 @@ class MainWindow(GeneralTabMixin, DestinationsTabMixin, GalleryTabMixin,
         self.local_ls.setChecked(bool(s.get("local_send_landscape", 1)))
         self.local_pt.setChecked(bool(s.get("local_send_portrait", 0)))
         self.oa_agenda.setText(s.get("oa_agenda") or "")
-        self.tag_group.setText(s.get("tag_group") or "")
+        self.tag_group.setEditText(s.get("tag_group") or "")
         self.org_name.setText(s.get("org_name") or "")
         self.program_url.setText(s.get("program_url") or "")
         self.footer_text.setText(s.get("footer_text") or "")
