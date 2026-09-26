@@ -18,7 +18,7 @@ DEFAULTS = {
     "oa_api_key": "",           # optionnel : API v2, sinon export public
     # ——— identité visuelle ———
     "org_name": "",             # nom de la structure (diapo du jour)
-    "program_url": "",          # page programme — footer + QR (défaut :
+    "program_url": "",          # page programme — footer (défaut :
     #                           https://openagenda.com/<agenda>)
     "footer_text": "Tout le programme sur",  # accroche du pied de page
     #                                        (vide = URL seule)

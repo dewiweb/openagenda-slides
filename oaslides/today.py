@@ -1,12 +1,10 @@
 """Diapo du jour : slide fixe sans visuel pour la diffusion pendant un
 événement (titre + intervenants + animateur). Générée à la demande
 depuis l'UI dans today/index.html, puis poussée vers les destinations
-configurées. Version générique : logo, accent et QR (permalink
-OpenAgenda) viennent des réglages / données de l'événement."""
+configurées. Version générique : logo et accent viennent des
+réglages / données de l'événement."""
 
-import base64
 import html
-import io
 import re
 from pathlib import Path
 from string import Template
@@ -17,7 +15,6 @@ from .settings import OUT_DIR, resolve_out_dir
 from .slide import brand, _file_uri
 
 _TEMPLATE = None
-_TEMPLATE_QR = None
 
 DARK = "#141414"
 SERIES_DARK = "#16203f"
@@ -30,15 +27,6 @@ def _template():
             (ASSET_DIR / "today_template.html").read_text(encoding="utf-8")
         )
     return _TEMPLATE
-
-
-def _template_qr():
-    global _TEMPLATE_QR
-    if _TEMPLATE_QR is None:
-        _TEMPLATE_QR = Template(
-            (ASSET_DIR / "today_qr_template.html").read_text("utf-8")
-        )
-    return _TEMPLATE_QR
 
 
 def today_html(data, fonts):
@@ -133,88 +121,28 @@ def today_html(data, fonts):
     )
 
 
-def _qr_url(data, cfg):
-    """Cible du QR : permalink OpenAgenda de l'événement, sinon l'URL du
-    programme configurée, sinon la page publique de l'agenda."""
-    if data.get("event_url"):
-        return data["event_url"]
-    if (cfg.get("program_url") or "").strip():
-        u = cfg["program_url"].strip()
-        return u if "://" in u else "https://" + u
-    agenda = (cfg.get("oa_agenda") or "").strip()
-    return f"https://openagenda.com/{agenda}" if agenda else ""
-
-
-def qr_html(data, bg, fonts, cfg):
-    """Slide QR : « Retrouvez cet événement… en scannant le QR code » —
-    même fond sombre que la diapo du jour. Cible : permalink de
-    l'événement ou page de l'agenda."""
-    url = _qr_url(data, cfg)
-    if not url:
-        return ""
-    import qrcode
-    qr = qrcode.QRCode(border=0, box_size=18)
-    qr.add_data(url)
-    qr.make()
-    img = qr.make_image(fill_color=SERIES_DARK, back_color="#ffffff")
-    buf = io.BytesIO()
-    img.convert("RGB").save(buf, "PNG")
-    b = brand()
-    target = html.escape(re.sub(r"^https?://", "", url))
-    return _template_qr().substitute(
-        font_faces=fonts.get("faces", ""),
-        font_family=fonts.get("family") or b["font_family"],
-        bg=bg,
-        sentence=html.escape(
-            "Retrouvez cet événement et tout le programme "
-            "en scannant le QR code"),
-        target=target,
-        qr_data="data:image/png;base64," + base64.b64encode(
-            buf.getvalue()).decode(),
-        logo_html=b["logo"],
-    )
-
-
 def write_today(data, out_dir=None):
-    """Écrit today/index.html (+ today/qr.html si une cible de QR est
-    disponible) et renvoie le chemin de l'index."""
+    """Écrit today/index.html et renvoie son chemin. Nettoie au passage
+    les restes d'anciennes générations (qr.*)."""
     out = Path(out_dir) if out_dir else OUT_DIR
     d = out / "today"
     d.mkdir(parents=True, exist_ok=True)
     dest = d / "index.html"
-    series = (data.get("series") or "").strip()
-    bg = data.get("bg") or (SERIES_DARK if series else DARK)
-    fonts = ensure_fonts()
-    dest.write_text(today_html(data, fonts), encoding="utf-8")
-    from .settings import load_settings
-    cfg = load_settings() or {}
-    qr = qr_html(data, bg, fonts, cfg)
-    if qr:
-        (d / "qr.html").write_text(qr, encoding="utf-8")
-    else:
-        # pas de cible QR : on supprime les restes d'une éventuelle
-        # génération précédente
-        for f in ("qr.html", "qr.png"):
-            p = d / f
-            if p.exists():
-                p.unlink()
+    dest.write_text(today_html(data, ensure_fonts()), encoding="utf-8")
+    for f in ("qr.html", "qr.png"):
+        (d / f).unlink(missing_ok=True)
     return dest
 
 
 def render_today_png(size, out_dir=None):
-    """Rend today/index.html en today/index.png (+ qr.html → qr.png si
-    présent) à la résolution `size` (même réglage que les autres
-    diapos). Renvoie le chemin du PNG principal."""
+    """Rend today/index.html en today/index.png à la résolution `size`
+    (même réglage que les autres diapos). Renvoie le chemin du PNG."""
     from .slide import render_all
 
     out = Path(out_dir) if out_dir else OUT_DIR
     src = out / "today" / "index.html"
     png = out / "today" / "index.png"
-    jobs = [(src, png)]
-    qr_src = out / "today" / "qr.html"
-    if qr_src.exists():
-        jobs.append((qr_src, out / "today" / "qr.png"))
-    list(render_all(jobs, size=size))
+    list(render_all([(src, png)], size=size))
     if not png.exists():
         raise RuntimeError("rendu de la diapo du jour impossible")
     return png

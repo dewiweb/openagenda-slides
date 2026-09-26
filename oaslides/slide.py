@@ -145,7 +145,7 @@ def brand(cfg=None):
         "logo": _logo_html(cfg.get("logo_path")),
         "font_family": (cfg.get("font_family") or "").strip()
                        or DEFAULT_FONT,
-        # affichage sans schéma ; l'URL complète sert de cible au QR
+        # affichage sans schéma ; l'URL complète reste dispo en _full
         "program_url": re.sub(r"^https?://", "", url).rstrip("/"),
         "program_url_full": url,
         "footer_text": cfg.get(

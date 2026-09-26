@@ -22,7 +22,7 @@ unique est OpenAgenda.
 sortie/  →  destination/
 ├── landscape/    diapos 16:9 (+ html/, manifest.txt)
 ├── portrait/     A4 ou 9:16 selon le réglage (+ html/, manifest.txt)
-├── today/        « diapo du jour » (index.*, qr.*)
+├── today/        « diapo du jour » (index.*)
 └── events.json   métadonnées (fiches, régénération)
 ```
 
@@ -52,8 +52,7 @@ de l'OS quand il existe ; les variables `OASLIDES_*` priment toujours.
 
 Diapo fixe sans visuel (fond sombre) pour la diffusion pendant un
 événement : titre, intervenants, animateur, notes, accessibilité,
-badge de série. Le QR compagnon pointe vers le permalink OpenAgenda
-de l'événement.
+badge de série.
 
 ## Lancer en développement
 

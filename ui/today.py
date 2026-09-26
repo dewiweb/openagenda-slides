@@ -192,12 +192,9 @@ class TodayTab(QWidget):
         self.thumb = _Thumb("Diapo du jour — cliquer pour agrandir")
         self.thumb.clicked.connect(lambda: self._preview("index.png"))
         prow.addWidget(self.thumb)
-        self.qr_thumb = _Thumb("Slide QR de la série — idem")
-        self.qr_thumb.clicked.connect(lambda: self._preview("qr.png"))
-        prow.addWidget(self.qr_thumb)
         rm = QPushButton("Supprimer")
         rm.setProperty("danger", True)
-        rm.setToolTip("Supprime les fichiers générés (index + QR) "
+        rm.setToolTip("Supprime les fichiers générés "
                       "du dossier today/")
         rm.clicked.connect(self._delete_today)
         prow.addWidget(rm, alignment=Qt.AlignBottom)
@@ -349,7 +346,6 @@ class TodayTab(QWidget):
             "access": self.access.toPlainText().strip(),
             "series": series,
             "series_logo": logo,
-            "event_url": e.get("url") or "",
         }
 
     def _generate(self):
@@ -393,22 +389,21 @@ class TodayTab(QWidget):
         self._refresh_thumbs()
 
     def _refresh_thumbs(self):
-        """Recharge les vignettes today/ (index + QR) ou le tiret si
-        rien n'est généré — appelé après génération et suppression."""
-        d = resolve_out_dir() / "today"
-        for w, name in ((self.thumb, "index.png"),
-                        (self.qr_thumb, "qr.png")):
-            p = d / name
-            pix = QPixmap(str(p)) if p.exists() else QPixmap()
-            w.setPixmap(pix.scaled(w.width() - 4, w.height() - 4,
-                                   Qt.KeepAspectRatio,
-                                   Qt.SmoothTransformation)
-                        if not pix.isNull() else QPixmap())
-            w.setText("" if not pix.isNull() else "—")
+        """Recharge la vignette today/index.png ou le tiret si rien
+        n'est généré — appelé après génération et suppression."""
+        w = self.thumb
+        p = resolve_out_dir() / "today" / "index.png"
+        pix = QPixmap(str(p)) if p.exists() else QPixmap()
+        w.setPixmap(pix.scaled(w.width() - 4, w.height() - 4,
+                               Qt.KeepAspectRatio,
+                               Qt.SmoothTransformation)
+                    if not pix.isNull() else QPixmap())
+        w.setText("" if not pix.isNull() else "—")
 
     def _delete_today(self):
-        """Supprime les fichiers générés de today/ (HTML + PNG, index et
-        QR) — les destinations déjà poussées ne sont pas touchées."""
+        """Supprime les fichiers générés de today/ (index.* + restes
+        d'anciennes versions) — les destinations déjà poussées ne sont
+        pas touchées."""
         d = resolve_out_dir() / "today"
         files = [d / f for f in ("index.html", "index.png",
                                  "qr.html", "qr.png") if (d / f).exists()]
