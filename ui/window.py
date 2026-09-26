@@ -219,6 +219,7 @@ class MainWindow(GeneralTabMixin, DestinationsTabMixin, GalleryTabMixin,
             tag_group=self.tag_group.text().strip(),
             org_name=self.org_name.text().strip(),
             program_url=self.program_url.text().strip(),
+            footer_text=self.footer_text.text().strip(),
             logo_path=self.logo_path.text().strip(),
             card_bg=self.card_bg.text().strip(),
             accent=self.accent.text().strip(),
@@ -373,6 +374,7 @@ class MainWindow(GeneralTabMixin, DestinationsTabMixin, GalleryTabMixin,
         self.tag_group.setText(s.get("tag_group") or "")
         self.org_name.setText(s.get("org_name") or "")
         self.program_url.setText(s.get("program_url") or "")
+        self.footer_text.setText(s.get("footer_text") or "")
         self.logo_path.setText(s.get("logo_path") or "")
         self.card_bg.setText(s.get("card_bg") or "")
         self.accent.setText(s.get("accent") or "")

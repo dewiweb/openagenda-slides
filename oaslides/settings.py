@@ -20,6 +20,8 @@ DEFAULTS = {
     "org_name": "",             # nom de la structure (diapo du jour)
     "program_url": "",          # page programme — footer + QR (défaut :
     #                           https://openagenda.com/<agenda>)
+    "footer_text": "Tout le programme sur",  # accroche du pied de page
+    #                                        (vide = URL seule)
     "logo_path": "",            # logo SVG/PNG (filigrane, badge série)
     "card_bg": "#efeae6",       # fond des diapos
     "accent": "#e2dff0",        # pastille du jour, badge de série

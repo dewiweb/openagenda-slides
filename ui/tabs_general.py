@@ -186,7 +186,10 @@ class GeneralTabMixin:
         self.org_name = QLineEdit(
             placeholderText="nom affiché de la structure")
         self.program_url = QLineEdit(
-            placeholderText="vide = page OpenAgenda de l'agenda")
+            placeholderText="https://mon-site.fr/programme — vide = "
+                            "page OpenAgenda de l'agenda")
+        self.footer_text = QLineEdit(
+            placeholderText="Tout le programme sur / Retrouvez-nous sur…")
         self.logo_path = QLineEdit(
             placeholderText="SVG ou PNG — filigrane, badge série")
         brow = QHBoxLayout()
@@ -197,6 +200,7 @@ class GeneralTabMixin:
         brow.addWidget(br)
         f.addRow("Structure", self.org_name)
         f.addRow("URL du programme", self.program_url)
+        f.addRow("Accroche du pied", self.footer_text)
         f.addRow("Logo", brow)
         self.card_bg = self._color_row(f, "Fond des diapos", "#efeae6")
         self.accent = self._color_row(f, "Accentuation", "#e2dff0")

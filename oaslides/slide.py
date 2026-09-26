@@ -136,20 +136,37 @@ def brand(cfg=None):
         else:
             return _BRAND
     agenda = (cfg.get("oa_agenda") or "").strip()
+    url = (cfg.get("program_url") or "").strip()
+    if not url and agenda:
+        url = f"openagenda.com/{agenda}"
     b = {
         "accent": _hex(cfg.get("accent"), "#e2dff0"),
         "bg": _hex(cfg.get("card_bg"), "#efeae6"),
         "logo": _logo_html(cfg.get("logo_path")),
         "font_family": (cfg.get("font_family") or "").strip()
                        or DEFAULT_FONT,
-        "program_url": (cfg.get("program_url") or "").strip()
-                       or (f"openagenda.com/{agenda}" if agenda else ""),
+        # affichage sans schéma ; l'URL complète sert de cible au QR
+        "program_url": re.sub(r"^https?://", "", url).rstrip("/"),
+        "program_url_full": url,
+        "footer_text": cfg.get(
+            "footer_text", "Tout le programme sur").strip(),
         "org": (cfg.get("org_name") or "").strip(),
     }
     b["dark"] = _darker(b["bg"])
     if cfg is not None:
         _BRAND = b
     return b
+
+
+def _footer_html(b):
+    """Pied de page : « <accroche> <pastille URL> » — texte libre, URL
+    facultative, disparition propre si les deux sont vides."""
+    bits = []
+    if b["footer_text"]:
+        bits.append(html.escape(b["footer_text"]))
+    if b["program_url"]:
+        bits.append(f"<b>{html.escape(b['program_url'])}</b>")
+    return " ".join(bits)
 
 
 def icon_svg(name):
@@ -224,8 +241,7 @@ def slide_html(ev, idx, fonts, orientation="landscape"):
 <div class="ph-logo">{b['logo']}</div></div>"""
 
     family = fonts.get("family") or b["font_family"]
-    footer = (f"Tout le programme sur <b>{html.escape(b['program_url'])}</b>"
-              if b["program_url"] else "")
+    footer = _footer_html(b)
     return _template(orientation).substitute(
         font_faces=fonts.get("faces", ""),
         font_family=f"{family}, {DEFAULT_FONT}"
