@@ -275,5 +275,72 @@ class OaMapTest(unittest.TestCase):
         self.assertEqual(ev["specs"]["Lieu"], "Salle A")
 
 
+def _v2_ev(**kw):
+    """Événement v2 plausible ; kw écrase les défauts. Mélange dicts
+    multilingues et chaînes aplaties (monolingual=fr)."""
+    import datetime as dt
+    nxt = dt.date.today() + dt.timedelta(days=10)
+    base = {
+        "uid": 9, "slug": "concert-x",
+        "title": {"fr": "Concert v2"},
+        "description": "Chaîne monolingue aplatie",
+        "longDescription": {"fr": "Avec **Jean Martin**."},
+        "conditions": {"fr": "5 €"},
+        "keywords": {"fr": ["seriefest"]},
+        "categorie": 1,                       # id d'option standard
+        "categories-metropolitaines": [2],    # champ additionnel
+        "publics": [3],
+        "timings": [
+            {"begin": f"{nxt.isoformat()}T20:00:00.000+02:00",
+             "end": f"{nxt.isoformat()}T22:00:00.000+02:00"},
+        ],
+        "attendanceMode": 1,
+        "age": {"min": 6},
+        "location": {"name": "Salle V2", "timezone": "Europe/Paris"},
+        "image": {"base": "https://x.fr/", "filename": "a.jpg"},
+    }
+    base.update(kw)
+    return base
+
+
+class OaV2Test(unittest.TestCase):
+    OPT_FIELDS = {
+        "categorie": {1: ("concert", "Concert")},
+        "categories-metropolitaines": {2: ("sante", "Santé")},
+        "publics": {3: ("tout-public", "Tout public")},
+    }
+
+    def test_v2_basic(self):
+        ev = oa._map_v2(_v2_ev(), self.OPT_FIELDS, "categorie",
+                        "mon-agenda", {"seriefest": "Festival"})
+        self.assertEqual(ev["title"], "Concert v2")
+        self.assertEqual(ev["tag"], "Concert")
+        self.assertEqual(ev["desc"], "Chaîne monolingue aplatie")
+        self.assertEqual(ev["specs"]["Tarif"], "5 €")
+        self.assertEqual(ev["specs"]["Public"], "Tout public · dès 6 ans")
+        self.assertEqual(ev["series"], "Festival")
+        # slugs d'options de TOUS les champs alimentent le filtre
+        for s in ("concert", "sante", "tout-public"):
+            self.assertIn(s, ev["tag_slugs"])
+        self.assertIn("9_concert-x", ev["url"])
+
+    def test_v2_custom_cat_field(self):
+        # tag_group pointant sur un champ additionnel
+        ev = oa._map_v2(_v2_ev(), self.OPT_FIELDS,
+                        "categories-metropolitaines", "a")
+        self.assertEqual(ev["tag"], "Santé")
+
+    def test_v2_keywords_none(self):
+        ev = oa._map_v2(_v2_ev(keywords=None), self.OPT_FIELDS,
+                        "categorie", "a")
+        self.assertEqual(ev["tag"], "Concert")
+
+    def test_langs_flat_and_dict(self):
+        self.assertEqual(oa._langs({"fr": "x"}), "x")
+        self.assertEqual(oa._langs("chaîne"), "chaîne")
+        self.assertEqual(oa._langs(None), "")
+        self.assertEqual(oa._langs({"de": "nur"}), "nur")  # repli 1ʳᵉ langue
+
+
 if __name__ == "__main__":
     unittest.main()

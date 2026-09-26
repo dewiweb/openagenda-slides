@@ -12,9 +12,10 @@ desc_md, speakers, moderator, note, access, access_venue, series,
 image, credit, _dt, _dt_end, pinned.
 
 Taxonomie : les catégories/publics viennent des `tagGroups` de
-l'événement (libellés propres à chaque agenda) — le réglage
-`tag_group` choisit quel groupe sert de catégorie (vide = premier
-groupe « categorie* » trouvé, sinon le premier groupe).
+l'événement (legacy) ou des champs à options du schéma (v2) —
+libellés propres à chaque agenda. Le réglage `tag_group` choisit
+quel groupe/champ sert de catégorie (vide = « categorie* » puis
+premier groupe non « publics* »).
 """
 
 import datetime
@@ -262,16 +263,38 @@ def _base_map(e, cat_value, cat_label, public_label, kws, cond, timings,
     }
 
 
-def _map_v2(e, cat_opts, pub_opts, agenda, series_map=None,
-            cat_group="", prefs=None):
-    cat_id = e.get("categorie")
-    cat_value, cat_label = (cat_opts.get(cat_id) or (None, None))
-    pub_ids = e.get("publics") or []
-    if isinstance(pub_ids, int):
-        pub_ids = [pub_ids]
-    pubs = [pub_opts.get(i) for i in pub_ids if i in pub_opts]
-    kws = [k for k in (e.get("keywords", {}).get("fr") or []) if k]
-    cond = (e.get("conditions") or {}).get("fr")
+def _langs(v):
+    """Champ multilingue v2 → valeur fr. Tolère les deux formes :
+    dict {fr: …} (défaut) et valeur aplatie quand `monolingual=fr`
+    est passé à la requête."""
+    if isinstance(v, dict):
+        r = v.get("fr")
+        return r if r is not None else next(iter(v.values()), "")
+    return v if v is not None else ""
+
+
+def _opt_ids(v):
+    """Valeur d'un champ à options v2 → liste d'ids (choix unique ou
+    multiple, valeur nue ou objet {id, label} si includeLabels)."""
+    if v is None:
+        return []
+    vals = v if isinstance(v, list) else [v]
+    return [x.get("id") if isinstance(x, dict) else x for x in vals]
+
+
+def _map_v2(e, opt_fields, cat_field, agenda, series_map=None,
+            prefs=None):
+    """opt_fields : {code_champ: {id_option: (value, label)}} issu du
+    schéma de l'agenda. cat_field : code du champ servant de catégorie
+    (réglage tag_group, « categorie » par défaut)."""
+    opts = opt_fields.get(cat_field) or {}
+    cid = next(iter(_opt_ids(e.get(cat_field))), None)
+    cat_value, cat_label = opts.get(cid) or (None, None)
+    pub_opts = opt_fields.get("publics") or {}
+    pubs = [pub_opts[i][1] for i in _opt_ids(e.get("publics"))
+            if i in pub_opts]
+    kws = [k for k in (_langs(e.get("keywords")) or []) if k]
+    cond = _langs(e.get("conditions"))
     acc = e.get("accessibility") or {}
     acc_codes = [k for k, v in acc.items() if v] \
         if isinstance(acc, dict) else list(acc)
@@ -285,16 +308,19 @@ def _map_v2(e, cat_opts, pub_opts, agenda, series_map=None,
     url = (e.get("canonicalUrl")
            or (f"https://openagenda.com/{agenda}/events/"
                f"{uid}_{e.get('slug', '')}" if uid else ""))
-    # v2 ne porte pas toujours tagGroups ; la catégorie vient du schéma
-    tag_slugs = [t.get("slug") for g in e.get("tagGroups") or []
-                 for t in g.get("tags") or [] if t.get("slug")]
+    # slugs (« value ») de toutes les options choisies — tous champs
+    # confondus : alimente « Tags retenus » comme les tagGroups legacy
+    tag_slugs = []
+    for code, fopts in opt_fields.items():
+        for i in _opt_ids(e.get(code)):
+            if i in fopts and fopts[i][0]:
+                tag_slugs.append(fopts[i][0])
+    desc = _langs(e.get("description"))
     ev = _base_map(
         e, cat_value, cat_label, " · ".join(p for p in pubs if p), kws,
-        cond, e.get("timings"), (e.get("title") or {}).get("fr", ""), url,
-        (e.get("description") or {}).get("fr", ""),
-        (e.get("longDescription") or {}).get("fr", "")
-        or (e.get("description") or {}).get("fr", ""),
-        (e.get("html") or {}).get("fr", ""),
+        cond, e.get("timings"), _langs(e.get("title")), url,
+        desc, _langs(e.get("longDescription")) or desc,
+        _langs(e.get("html")),
         image, e.get("imageCredits") or "",
         (e.get("location") or {}).get("name", ""),
         acc_codes, e.get("age"), series_map, tag_slugs,
@@ -303,7 +329,7 @@ def _map_v2(e, cat_opts, pub_opts, agenda, series_map=None,
     if not e.get("timings"):
         # timings indisponibles même sur le détail : le texte
         # « dateRange » éditorial vaut mieux que rien
-        dr = (e.get("dateRange") or {}).get("fr", "")
+        dr = _langs(e.get("dateRange"))
         dr = re.sub(r"\s*undefined\s*", " ", dr).strip(" ,")
         if dr:
             ev["specs"]["Date"] = dr
@@ -313,7 +339,7 @@ def _map_v2(e, cat_opts, pub_opts, agenda, series_map=None,
 
 def _map_legacy(e, series_map=None, cat_group="", prefs=None):
     cat_value, cat_label, pubs, tag_slugs = _pick_tag_groups(e, cat_group)
-    kws = [k for k in (e.get("keywords", {}).get("fr") or []) if k]
+    kws = [k for k in (_langs(e.get("keywords")) or []) if k]
     cond = (e.get("conditions") or {}).get("fr")
     loc = e.get("location") or {}
     lieu = loc.get("name") or e.get("locationName") or ""
@@ -391,31 +417,38 @@ def agenda_info(agenda, key=""):
 
 
 def _v2_events(agenda, key, series_map=None, cat_group="", prefs=None):
-    """API v2 officielle : schéma (libellés catégorie/public) puis
-    événements à venir paginés."""
+    """API v2 officielle : schéma (champs à options = taxonomie) puis
+    événements en cours/à venir, paginés par curseur `after` (la clé
+    `offset` n'est pas documentée — `after` est la voie prescrite)."""
     a = _get(f"{API}/agendas/{agenda}",
              params={"key": key}).json()
-    cat_opts, pub_opts = {}, {}
+    # {code_champ: {id_option: (value, label)}} — tous les champs à
+    # options, pas seulement categorie/publics : le réglage tag_group
+    # peut désigner n'importe quel champ additionnel comme catégorie
+    opt_fields = {}
     for f in a.get("schema", {}).get("fields", []):
         opts = {o["id"]: (o.get("value"),
-                         (o.get("label") or {}).get("fr"))
+                         _langs(o.get("label")))
                 for o in f.get("options") or []}
-        if f["field"] == "categorie":
-            cat_opts = opts                     # id → (value, label)
-        elif f["field"] == "publics":
-            pub_opts = {i: lbl for i, (_, lbl) in opts.items()}
+        if opts:
+            opt_fields[f["field"]] = opts
+    cat_field = cat_group if cat_group in opt_fields else \
+        ("categorie" if "categorie" in opt_fields
+         else next(iter(opt_fields), ""))
 
-    today = datetime.date.today().isoformat()
-    events, offset = [], 0
+    events, after = [], None
     while True:
+        params = {"key": key, "size": 300, "detailed": 1,
+                  "monolingual": "fr",
+                  "relative[]": ["current", "upcoming"]}
+        if after:
+            params["after[]"] = after
         d = _get(f"{API}/agendas/{agenda}/events",
-                 params={"key": key, "size": 100, "offset": offset,
-                         "detailed": 1,
-                         "timings[gte]": today}).json()
-        events += d.get("events", [])
-        total = d.get("total", 0)
-        offset += len(d.get("events", [])) or 100
-        if not d.get("events") or offset >= total:
+                 params=params).json()
+        batch = d.get("events", [])
+        events += batch
+        after = d.get("after")
+        if not batch or not after:
             break
     # la liste omet `timings` quand il y en a trop (récurrents :
     # ~40/an) — sans eux l'événement serait classé « En continu » ;
@@ -430,8 +463,8 @@ def _v2_events(agenda, key, series_map=None, cat_group="", prefs=None):
                     e["timings"] = full["timings"]
             except Exception:
                 pass  # le texte dateRange servira de spécification
-    return [_map_v2(e, cat_opts, pub_opts, agenda, series_map,
-                    cat_group, prefs)
+    return [_map_v2(e, opt_fields, cat_field, agenda, series_map,
+                    prefs)
             for e in events]
 
 
@@ -504,10 +537,26 @@ def oa_list_events(cfg, series_map=None):
     return _legacy_events(agenda, series_map, cat_group, prefs)
 
 
-def list_tag_groups(agenda, limit=100):
-    """Groupes de tags de l'agenda (export legacy, sans clé) →
-    {slug_groupe: {nom, tags: [(slug, libellé)]}} — pour configurer
-    `tag_group` et `tag_filter` dans l'UI."""
+def list_tag_groups(agenda, key="", limit=100):
+    """Taxonomie de l'agenda → {code_groupe: {nom, tags: [(slug,
+    libellé)]}} — pour configurer `tag_group` et les cases
+    « Catégories générées ». Avec clé : schéma v2 complet (champs à
+    options, même inutilisés) ; sans clé : tagGroups de l'export
+    public (uniquement les valeurs déjà utilisées)."""
+    if key:
+        a = _get(f"{API}/agendas/{agenda}",
+                 params={"key": key}).json()
+        groups = {}
+        for f in a.get("schema", {}).get("fields", []):
+            tags = sorted(
+                (o.get("value") or str(o["id"]),
+                 _langs(o.get("label")) or o.get("value") or str(o["id"]))
+                for o in f.get("options") or [])
+            if tags:
+                groups[f["field"]] = {
+                    "name": _langs(f.get("label")) or f["field"],
+                    "tags": tags}
+        return groups
     uid = _resolve_uid(agenda)
     groups = {}
     d = _get(f"https://openagenda.com/agendas/{uid}/events.json",

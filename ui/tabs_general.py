@@ -352,11 +352,13 @@ class GeneralTabMixin:
             return
         self.tags_lbl.setText("découverte des catégories…")
         self._cats_agenda = agenda
+        s = self._collect() if hasattr(self, "_collect") else {}
+        key = (s.get("oa_api_key") or "").strip()
 
         def work():
             try:
                 from oaslides.oa import list_tag_groups
-                groups = list_tag_groups(agenda)
+                groups = list_tag_groups(agenda, key=key)
                 self.series_done.emit([("__cats__", groups)])
             except Exception as e:
                 self.series_done.emit([("__tags__", f"échec : {e}")])
