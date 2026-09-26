@@ -352,15 +352,15 @@ class GeneralTabMixin:
             self.tags_lbl.setText("renseignez d'abord l'agenda")
             return
         # changement d'agenda : catégories, séries et groupe
-        # catégorie sont propres à l'ancien agenda — on les
-        # réinitialise plutôt que de garder des slugs étrangers
-        if self._cats_agenda and agenda != self._cats_agenda:
-            self.gen_cats.clear()
-            self.series_map.clear()
-            self.tag_group.setEditText("")
-            self._cats_reset = True
+        # catégorie sont propres à l'ancien agenda — réinitialisés
+        # dans _populate_cats, c.-à-d. seulement si la découverte
+        # répond (un échec ne détruit pas les réglages existants).
+        # _cats_agenda n'est mis à jour qu'au succès, sinon une
+        # redécouverte du même agenda ne remarquerait pas le changement.
+        self._cats_pending_agenda = agenda
+        self._cats_pending_reset = bool(
+            self._cats_agenda and agenda != self._cats_agenda)
         self.tags_lbl.setText("découverte des catégories…")
-        self._cats_agenda = agenda
         s = self._collect() if hasattr(self, "_collect") else {}
         key = (s.get("oa_api_key") or "").strip()
 
@@ -380,6 +380,14 @@ class GeneralTabMixin:
         est vide, sinon seules les valeurs listées le sont."""
         from oaslides.extract import parse_cats
         from oaslides.oa import _norm
+        if getattr(self, "_cats_pending_reset", False):
+            self._cats_reset = True
+            self.gen_cats.clear()
+            self.series_map.clear()
+            self.tag_group.setEditText("")
+        self._cats_pending_reset = False
+        self._cats_agenda = getattr(
+            self, "_cats_pending_agenda", self._cats_agenda)
         while self.cats_lay.count():
             it = self.cats_lay.takeAt(0)
             if it.widget():
