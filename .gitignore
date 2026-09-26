@@ -1,0 +1,9 @@
+build/
+dist/
+data/
+diaporama/
+__pycache__/
+*.pyc
+assets/cache/
+assets/fonts/
+venv/
