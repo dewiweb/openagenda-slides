@@ -141,7 +141,7 @@ class GalleryTabMixin:
             # plancher bas : la liste peut rétrécir, le scroll de page
             # prend le relais plutôt que de couper le groupe Lecture
             gal.setMinimumHeight(150)
-            gal.itemDoubleClicked.connect(self._preview_slide)
+            gal.itemDoubleClicked.connect(self._preview_gallery_slide)
             QShortcut(QKeySequence.Delete, gal,
                       context=Qt.WidgetWithChildrenShortcut,
                       activated=self._delete_selected)
@@ -207,7 +207,7 @@ class GalleryTabMixin:
 
     # ———————————————————— galerie ————————————————————
 
-    def _preview_slide(self, it):
+    def _preview_gallery_slide(self, it):
         """Aperçu d'une diapo (double-clic) — F11 plein écran."""
         rel = it.data(Qt.UserRole)
         if not rel:
@@ -454,7 +454,7 @@ class GalleryTabMixin:
         if it and it.data(Qt.UserRole):
             rel = it.data(Qt.UserRole)
             m.addAction("Aperçu").triggered.connect(
-                lambda: self._preview_slide(it))
+                lambda: self._preview_gallery_slide(it))
             m.addAction("Diaporama depuis cette diapo").triggered\
                 .connect(lambda: self._open_slideshow(
                     Path(rel).parent.name == "portrait",
