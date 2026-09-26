@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=OpenAgenda Slides
+Comment=Diaporama d'evenements OpenAgenda
+Exec=oaslides
+Icon=oaslides
+Categories=Utility;
+Terminal=false
