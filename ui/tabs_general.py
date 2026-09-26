@@ -7,7 +7,7 @@ import threading
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QDateEdit, QFormLayout, QFrame,
-    QGroupBox, QHBoxLayout, QLabel, QLineEdit,
+    QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
     QPlainTextEdit, QPushButton, QScrollArea, QSpinBox, QStackedWidget,
     QVBoxLayout, QWidget,
 )
@@ -94,23 +94,37 @@ class GeneralTabMixin:
         catsbox = QGroupBox("Catégories générées")
         f = QFormLayout(catsbox)
         f.setLabelAlignment(Qt.AlignRight)
-        self.gen_cats = QLineEdit()
-        self.gen_cats.setPlaceholderText(
-            "vide = tout l'agenda · sinon slugs/libellés séparés "
-            "par des virgules : concert, exposition")
-        f.addRow("Tags retenus", self.gen_cats)
         row = QHBoxLayout()
-        ls = QPushButton("Lister les groupes de tags de l'agenda")
+        ls = QPushButton("Découvrir les catégories de l'agenda")
         ls.setProperty("ghost", True)
-        ls.setToolTip("Interroge l'export public OpenAgenda et affiche "
-                      "les groupes de tags (catégories, publics…) et "
-                      "leurs valeurs — utile pour choisir les filtres")
+        ls.setToolTip("Interroge l'export public OpenAgenda et liste "
+                      "les groupes de tags (catégories, publics…) — "
+                      "décochez celles à exclure des générations")
         ls.clicked.connect(self._list_tag_groups)
         row.addWidget(ls)
         self.tags_lbl = QLabel()
         self.tags_lbl.setWordWrap(True)
         row.addWidget(self.tags_lbl, 1)
         f.addRow("", row)
+        # cases découvertes, groupées par groupe de tags — remplies à
+        # la découverte (auto à la saisie de l'agenda / au test)
+        self._cat_checks = []          # [(slug, libellé, QCheckBox)]
+        self._cats_loading = False
+        self._cats_agenda = ""
+        self.cats_panel = QWidget()
+        self.cats_lay = QVBoxLayout(self.cats_panel)
+        self.cats_lay.setContentsMargins(0, 0, 0, 0)
+        self.cats_lay.setSpacing(4)
+        self.cats_panel.hide()
+        f.addRow(self.cats_panel)
+        self.gen_cats = QLineEdit()
+        self.gen_cats.setPlaceholderText(
+            "vide = tout l'agenda · alimenté par les cases, édition "
+            "avancée possible (slugs/libellés, virgules)")
+        self.gen_cats.setToolTip(
+            "Sélection envoyée à la génération : slugs des cases "
+            "cochées + éventuels termes hors taxonomie de l'agenda")
+        f.addRow("Tags retenus", self.gen_cats)
         lay.addWidget(catsbox)
 
         sp = QGroupBox("Informations affichées (specs)")
@@ -163,6 +177,9 @@ class GeneralTabMixin:
         f.setLabelAlignment(Qt.AlignRight)
         self.oa_agenda = QLineEdit(
             placeholderText="slug ou uid — ex. mon-agenda")
+        # agenda renseigné → découverte automatique des catégories
+        self.oa_agenda.editingFinished.connect(
+            self._maybe_discover_cats)
         self.oa_key = _pw("(optionnel — sans clé : export public)")
         self.tag_group = QLineEdit(
             placeholderText="vide = auto (groupe « categorie* »)")
@@ -301,30 +318,101 @@ class GeneralTabMixin:
         if f:
             self.logo_path.setText(f)
 
+    def _maybe_discover_cats(self):
+        """Lance la découverte si l'agenda saisi diffère du dernier
+        découvert — appelé à la fin de l'édition du champ agenda."""
+        agenda = self.oa_agenda.text().strip()
+        if agenda and agenda != self._cats_agenda:
+            self._list_tag_groups()
+
     def _list_tag_groups(self):
-        """Affiche les groupes de tags (et leurs valeurs) de l'agenda
-        configuré — aide au choix de « Groupe catégorie » et des
-        filtres. Export public, sans clé."""
-        self.tags_lbl.setText("interrogation de l'agenda…")
-        s = self._collect() if hasattr(self, "_collect") else {}
-        agenda = (s.get("oa_agenda") or self.oa_agenda.text()).strip()
+        """Découvre les groupes de tags de l'agenda (export public,
+        sans clé) et peuple les cases à cocher des catégories —
+        une section par groupe, état initial depuis « Tags retenus »."""
+        agenda = self.oa_agenda.text().strip()
         if not agenda:
             self.tags_lbl.setText("renseignez d'abord l'agenda")
             return
+        self.tags_lbl.setText("découverte des catégories…")
+        self._cats_agenda = agenda
 
         def work():
             try:
                 from oaslides.oa import list_tag_groups
                 groups = list_tag_groups(agenda)
-                txt = " · ".join(
-                    f"{v['name']} [{slug}] : "
-                    + ", ".join(l for _, l in v["tags"][:8])
-                    for slug, v in groups.items()) or "aucun tagGroup"
+                self.series_done.emit([("__cats__", groups)])
             except Exception as e:
-                txt = f"échec : {e}"
-            self.series_done.emit([("__tags__", txt)])
+                self.series_done.emit([("__tags__", f"échec : {e}")])
 
         threading.Thread(target=work, daemon=True).start()
+
+    def _populate_cats(self, groups):
+        """Remplit le panneau de cases depuis {slug_groupe: {name,
+        tags: [(slug, libellé)]}} — tout coché si « Tags retenus »
+        est vide, sinon seules les valeurs listées le sont."""
+        from oaslides.extract import parse_cats
+        from oaslides.oa import _norm
+        while self.cats_lay.count():
+            it = self.cats_lay.takeAt(0)
+            if it.widget():
+                it.widget().deleteLater()
+            elif it.layout():
+                while it.layout().count():
+                    sub = it.layout().takeAt(0)
+                    if sub.widget():
+                        sub.widget().deleteLater()
+        self._cat_checks = []
+        if not groups:
+            self.tags_lbl.setText(
+                "aucun groupe de tags — cet agenda n'a pas de "
+                "catégories (filtrage manuel possible ci-dessous)")
+            self.cats_panel.hide()
+            return
+        terms = {_norm(t) for t in parse_cats(self.gen_cats.text())}
+        self._cats_loading = True
+        try:
+            for gslug, g in groups.items():
+                head = QLabel(f"{g['name']}  [{gslug}]")
+                head.setStyleSheet("color:#8f8c8a;font-size:12px")
+                self.cats_lay.addWidget(head)
+                grid = QGridLayout()
+                grid.setContentsMargins(12, 0, 0, 0)
+                grid.setHorizontalSpacing(16)
+                for i, (slug, label) in enumerate(g["tags"]):
+                    cb = QCheckBox(label or slug)
+                    cb.setChecked(
+                        not terms
+                        or _norm(slug) in terms
+                        or _norm(label) in terms)
+                    cb.toggled.connect(self._sync_gen_cats)
+                    grid.addWidget(cb, i // 3, i % 3)
+                    self._cat_checks.append((slug, label, cb))
+                self.cats_lay.addLayout(grid)
+        finally:
+            self._cats_loading = False
+        n = sum(len(g["tags"]) for g in groups.values())
+        self.tags_lbl.setText(
+            f"{len(groups)} groupe(s), {n} tag(s) — "
+            "décochez ce qui ne doit pas être généré")
+        self.cats_panel.show()
+
+    def _sync_gen_cats(self, *_):
+        """Cases → champ « Tags retenus » : slugs cochés (tout coché =
+        vide = tout l'agenda) + termes saisis hors taxonomie connue,
+        préservés tels quels."""
+        if self._cats_loading or not self._cat_checks:
+            return
+        from oaslides.extract import parse_cats
+        from oaslides.oa import _norm
+        known = {_norm(s) for s, _, _ in self._cat_checks} | \
+            {_norm(l) for _, l, _ in self._cat_checks}
+        extras = [t for t in parse_cats(self.gen_cats.text())
+                  if _norm(t) not in known]
+        checked = [s for s, _, cb in self._cat_checks if cb.isChecked()]
+        txt = "" if len(checked) == len(self._cat_checks) \
+            and not extras else ", ".join(checked + extras)
+        if txt != self.gen_cats.text().strip():
+            self.gen_cats.setText(txt)  # textChanged → _mark_dirty
 
     def _detect_series(self):
         """Scanne les keywords OA de l'agenda en worker — ajoute les
@@ -348,6 +436,9 @@ class GeneralTabMixin:
     def _on_series_done(self, found):
         if found and found[0][0] == "__tags__":
             self.tags_lbl.setText(found[0][1])
+            return
+        if found and found[0][0] == "__cats__":
+            self._populate_cats(found[0][1])
             return
         if found and found[0][0] == "__erreur__":
             self.series_test.setText(f"échec : {found[0][1]}")

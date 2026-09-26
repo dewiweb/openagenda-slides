@@ -401,6 +401,11 @@ class MainWindow(GeneralTabMixin, DestinationsTabMixin, GalleryTabMixin,
         i = self.ss_screen_p.findData(int(s.get("ss_screen_p") or -1))
         self.ss_screen_p.setCurrentIndex(max(i, 0))
         self._refresh_gallery()
+        # agenda déjà configuré → peuple d'emblée les cases de
+        # catégories (worker réseau — la fenêtre s'affiche d'abord)
+        if (s.get("oa_agenda") or "").strip():
+            self._cats_agenda = s["oa_agenda"].strip()
+            QTimer.singleShot(0, self._list_tag_groups)
 
     # ———————————————————— actions ————————————————————
 

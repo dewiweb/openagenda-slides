@@ -195,6 +195,10 @@ class DestinationsTabMixin:
 
     def _on_test_done(self, proto, res):
         getattr(self, f"{proto}_test").setText(res)
+        # agenda validé → découverte des catégories pour peupler les
+        # cases « Catégories générées »
+        if proto == "oa" and res.startswith("connexion OK"):
+            self._list_tag_groups()
 
     def _browse(self, field):
         d = QFileDialog.getExistingDirectory(
