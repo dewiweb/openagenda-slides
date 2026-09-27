@@ -144,6 +144,11 @@ def run(icon_path):
     timer.timeout.connect(_poll)
     timer.start(5000)
 
+    # nouvelle version ? — check différé et silencieux : seule une
+    # version plus récente est signalée (jamais « à jour » au boot)
+    QTimer.singleShot(
+        8000, lambda: win._check_update(quiet=True))
+
     threading.Thread(target=scheduler, daemon=True).start()
 
     prefs = load_settings()

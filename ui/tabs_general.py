@@ -439,10 +439,14 @@ class GeneralTabMixin:
             f"{len(added)} série(s) ajoutée(s), "
             f"{len(found) - len(added)} déjà listée(s)")
 
-    def _check_update(self):
+    def _check_update(self, quiet=False):
         """Interroge l'API GitHub releases en worker — résultat livré
-        par le signal update_done dans le thread GUI."""
-        self.update_lbl.setText("recherche…")
+        par le signal update_done dans le thread GUI. `quiet` (check
+        automatique au démarrage) : « recherche… » et « à jour » ne
+        polluent pas le libellé — seules nouveauté et rien ne passent."""
+        self._upd_quiet = quiet
+        if not quiet:
+            self.update_lbl.setText("recherche…")
 
         def work():
             try:
@@ -457,13 +461,19 @@ class GeneralTabMixin:
         threading.Thread(target=work, daemon=True).start()
 
     def _on_update_done(self, tag, url_or_err):
+        quiet = getattr(self, "_upd_quiet", False)
         if not tag:
-            self.update_lbl.setText(f"échec : {url_or_err}")
+            if not quiet:
+                self.update_lbl.setText(f"échec : {url_or_err}")
             return
         from oaslides.version import VERSION, newer_than_current
         if newer_than_current(tag):
             self.update_lbl.setText(
                 f'<a href="{url_or_err}" style="color:#c99483">'
                 f"{tag} disponible — télécharger</a>")
-        else:
+            if quiet:
+                self.statusBar().showMessage(
+                    f"Nouvelle version {tag} disponible — "
+                    "voir l'onglet Général", 8000)
+        elif not quiet:
             self.update_lbl.setText(f"à jour ({VERSION})")

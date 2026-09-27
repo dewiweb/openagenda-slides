@@ -8,6 +8,16 @@ d'affichage — en paysage 16:9, en portrait 9:16 ou en A4 imprimable.
 Aucune compétence technique nécessaire : téléchargez, indiquez votre
 agenda, cliquez sur **Générer**.
 
+<p align="center">
+  <img src="docs/screenshots/slide-landscape.png" width="49%" alt="Diapo paysage 16:9 générée">&nbsp;<img src="docs/screenshots/slide-portrait-screen.png" height="440" alt="Diapo portrait 9:16 générée"><br>
+  <img src="docs/screenshots/window-general.png" width="80%" alt="Fenêtre de l'application">
+</p>
+
+> **English** — turns any public OpenAgenda agenda into ready-to-broadcast
+> slides (16:9, 9:16 portrait, A4), for TVs and digital signage.
+> Portable Windows app / Linux AppImage, no install, no technical
+> skills required. [Quickstart in English](#english-quickstart) below.
+
 ---
 
 ## Installation
@@ -185,10 +195,10 @@ Les réglages sont appliqués à l'enregistrement — le bouton
 **Enregistrer** en haut à droite s'allume dès qu'un champ est modifié.
 
 **Se mettre à jour ?**
-Le bouton **Vérifier les mises à jour** (onglet Général, tout en bas)
-vous donne un lien direct vers la nouvelle version s'il y en a une —
-téléchargez-la et remplacez l'ancien fichier ; `oaslides-data/` garde
-vos réglages.
+L'app vérifie discrètement au démarrage et vous signale une nouvelle
+version quand il y en a une (bouton **Vérifier les mises à jour**
+dans Général pour le faire à la demande) — téléchargez-la et
+remplacez l'ancien fichier ; `oaslides-data/` garde vos réglages.
 
 **Tout supprimer ?**
 Supprimez l'exécutable **et** le dossier `oaslides-data/` à côté
@@ -224,5 +234,28 @@ dépendance au site d'une organisation.
 - L'extraction des intervenants/animateurs pour la diapo du jour est
   heuristique (`<strong>`, « animée par… ») : vide plutôt que fausse
   chez des agendas au style de rédaction différent.
+
+---
+
+## English quickstart
+
+**OpenAgenda Slides** turns any *public* OpenAgenda agenda into a set
+of event slides, ready for TVs, kiosks and digital signage — landscape
+16:9, portrait 9:16, or printable A4.
+
+1. Download `oaslides-windows-…zip` or `oaslides-linux-…AppImage`
+   from [Releases](https://github.com/dewiweb/openagenda-slides/releases)
+   (Windows may show a SmartScreen notice — the app isn't signed;
+   *More info → Run anyway*).
+2. Launch it, type your agenda slug (the name in
+   `openagenda.com/agendas/<your-agenda>`), click **Générer**.
+3. No API key needed — the app uses the agenda's public export.
+   An OpenAgenda v2 key (free, in your account settings) is
+   recommended for richer taxonomies and longevity.
+
+Branding (colors, logo, font, footer, per-format layout metrics) is
+adjusted in the **Style** tab with a live preview; slides can be
+pushed automatically to an FTP server, an SMB share or another folder.
+The interface is French — everything else is language-agnostic.
 - Les champs personnalisés (`custom`) des agendas ne sont pas
   affichés.
