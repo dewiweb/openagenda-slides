@@ -12,7 +12,6 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QWidget,
 )
 
-from oaslides.settings import load_settings
 from .style import _pw
 
 
@@ -204,47 +203,6 @@ class GeneralTabMixin:
         f.addRow("", row)
         lay.addWidget(sers)
 
-        ident = QGroupBox("Identité visuelle")
-        f = QFormLayout(ident)
-        f.setLabelAlignment(Qt.AlignRight)
-        self.org_name = QLineEdit(
-            placeholderText="nom affiché de la structure")
-        self.program_url = QLineEdit(
-            placeholderText="https://mon-site.fr/programme — vide = "
-                            "page OpenAgenda de l'agenda")
-        self.footer_text = QLineEdit(
-            placeholderText="Tout le programme sur / Retrouvez-nous sur…")
-        self.logo_path = QLineEdit(
-            placeholderText="SVG ou PNG — filigrane, badge série")
-        brow = QHBoxLayout()
-        brow.addWidget(self.logo_path, 1)
-        br = QPushButton("Parcourir…")
-        br.setProperty("ghost", True)
-        br.clicked.connect(self._pick_logo)
-        brow.addWidget(br)
-        f.addRow("Structure", self.org_name)
-        f.addRow("URL du programme", self.program_url)
-        f.addRow("Accroche du pied", self.footer_text)
-        f.addRow("Logo", brow)
-        self.card_bg = self._color_row(f, "Fond des diapos", "#efeae6")
-        self.accent = self._color_row(f, "Accentuation", "#e2dff0")
-        self.font_family = QLineEdit(
-            placeholderText="vide = pile système · sinon nom CSS ou "
-                            "famille d'un fichier du dossier fonts/")
-        f.addRow("Fonte", self.font_family)
-        row = QHBoxLayout()
-        pv = QPushButton("Aperçu d'une diapo")
-        pv.setProperty("ghost", True)
-        pv.setToolTip("Enregistre les réglages puis rend une vraie "
-                      "diapo de l'agenda — pour ajuster couleurs, "
-                      "logo et fonte sans lancer une génération")
-        pv.clicked.connect(self._preview_slide)
-        row.addWidget(pv)
-        self.preview_lbl = QLabel("")
-        row.addWidget(self.preview_lbl, 1)
-        f.addRow(row)
-        lay.addWidget(ident)
-
         appbox = QGroupBox("Application")
         f = QFormLayout(appbox)
         f.setLabelAlignment(Qt.AlignRight)
@@ -304,37 +262,6 @@ class GeneralTabMixin:
         log.setMinimumHeight(180)
         lay.addWidget(log, 1)
         return outer
-
-    def _color_row(self, form, label, default):
-        """Champ couleur #rrggbb + bouton pipette (QColorDialog)."""
-        from PySide6.QtWidgets import QColorDialog
-        from PySide6.QtGui import QColor
-        w = QLineEdit(placeholderText=default)
-        w.setFixedWidth(120)
-        btn = QPushButton("…")
-        btn.setProperty("ghost", True)
-        btn.setFixedWidth(36)
-        row = QHBoxLayout()
-        row.addWidget(w)
-        row.addWidget(btn)
-        row.addStretch(1)
-
-        def pick():
-            c = QColorDialog.getColor(QColor(w.text() or default), self,
-                                      label)
-            if c.isValid():
-                w.setText(c.name())
-        btn.clicked.connect(pick)
-        form.addRow(label, row)
-        return w
-
-    def _pick_logo(self):
-        from PySide6.QtWidgets import QFileDialog
-        f, _ = QFileDialog.getOpenFileName(
-            self, "Logo de la structure", "",
-            "Images (*.svg *.png *.jpg *.jpeg *.webp)")
-        if f:
-            self.logo_path.setText(f)
 
     def _maybe_discover_cats(self):
         """Lance la découverte si l'agenda saisi diffère du dernier
@@ -463,55 +390,6 @@ class GeneralTabMixin:
             and not extras else ", ".join(checked + extras)
         if txt != self.gen_cats.text().strip():
             self.gen_cats.setText(txt)  # textChanged → _mark_dirty
-
-    def _preview_slide(self):
-        """Aperçu réel : enregistre les réglages, rend une diapo de
-        l'agenda (la plus représentative : image + specs) puis l'ouvre
-        dans l'aperçu — itération couleurs/logo/fonte sans run."""
-        if not self.oa_agenda.text().strip():
-            self.preview_lbl.setText("renseignez d'abord l'agenda")
-            return
-        self._save()
-        self.preview_lbl.setText("rendu…")
-
-        def work():
-            try:
-                import oaslides.slide as sl
-                sl._BRAND = None  # relecture des réglages (cache par run)
-                cfg = load_settings()
-                from oaslides.oa import oa_list_events, filter_categories
-                from oaslides.extract import parse_cats
-                from oaslides.media import download_image, ensure_fonts
-                from oaslides.settings import resolve_out_dir
-                evs = filter_categories(
-                    oa_list_events(cfg),
-                    parse_cats(cfg.get("gen_categories", "")))
-                if not evs:
-                    raise RuntimeError("aucun événement sur l'agenda "
-                                       "(filtre trop restrictif ?)")
-                e = max(evs[:10], key=lambda x: (
-                    bool(x.get("image")), len(x.get("specs", {}))))
-                download_image(e)
-                out = resolve_out_dir(cfg)
-                out.mkdir(parents=True, exist_ok=True)
-                hp, pp = out / "_preview.html", out / "_preview.png"
-                hp.write_text(
-                    sl.slide_html(e, 0, ensure_fonts()), "utf-8")
-                size = sl.SIZES.get(cfg.get("resolution"), sl.DEFAULT_SIZE)
-                list(sl.render_all([(hp, pp)], size=size))
-                self.preview_done.emit(str(pp), "")
-            except Exception as ex:
-                self.preview_done.emit("", str(ex))
-
-        threading.Thread(target=work, daemon=True).start()
-
-    def _on_preview_done(self, path, err):
-        if not path:
-            self.preview_lbl.setText(f"échec : {err}")
-            return
-        self.preview_lbl.setText("")
-        from .preview import preview_image
-        preview_image(self, path, "Aperçu de diapo")
 
     def _detect_series(self):
         """Scanne les keywords OA de l'agenda en worker — ajoute les

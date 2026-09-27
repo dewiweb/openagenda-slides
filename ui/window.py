@@ -310,6 +310,11 @@ class MainWindow(GeneralTabMixin, DestinationsTabMixin, GalleryTabMixin,
             QCheckBox, QComboBox, QDateEdit, QLineEdit, QPlainTextEdit,
             QSpinBox,
         )
+        # onglet Style : seuls les champs identité (LineEdit) sont des
+        # réglages — les spinboxes se câblent eux-mêmes, le combo format
+        # et la case « auto » sont des contrôles de vue
+        for w in self._tab_style.findChildren(QLineEdit):
+            w.textChanged.connect(self._mark_dirty)
         for tab in (self._tab_general, self._tab_dest, self._tab_ss):
             for w in tab.findChildren(QLineEdit):
                 w.textChanged.connect(self._mark_dirty)
