@@ -1,83 +1,131 @@
 <!DOCTYPE html>
 <!--
-  Gabarit de diapo oaslides (1920×1080, ratio 16:9).
-  Rempli par oaslides/slide.py via string.Template — variables :
-    $font_faces / $font_family  @font-face embarqués + famille CSS
-    $bg / $dark                 fond de la carte + variante foncée
-    $ink                        couleur d'encre (#141414)
-    $media                      bloc visuel : <img> ou placeholder SVG
-    $tag                        pastille catégorie
-    $h1_size                    taille du titre selon sa longueur
-    $title / $desc              titre / description (échappés HTML)
-    $specs_cls / $specs_html    liste des specs (date, durée, lieu…)
-    $logo_html                  logo de la structure (SVG inline ou <img>)
-    $footer_html                ligne de pied de page (lien programme)
-  Le rendu s'ouvre dans un navigateur : tout est embarqué (fontes,
-  images en data URI) — fichier autonome.
+  ==========================================================================
+  Gabarit de diapo « événement » — PAYSAGE 16:9 (1920×1080)
+  ==========================================================================
+  Composition : carte plein écran avec logo en filigrane, visuel à gauche
+  (pastille catégorie + crédit photo incrustés), textes à droite (titre,
+  description, specs), pied de page en bas à droite.
+
+  Rempli par oaslides/slide.py via string.Template :
+
+    Blocs injectés :
+      $font_faces   déclarations @font-face (fontes embarquées)
+      $media        visuel : <img class="photo"> ou placeholder + logo
+      $specs_html   lignes d'info (<div class="spec">icône + texte</div>)
+      $logo_html    logo de la structure (SVG inline ou <img>)
+      $footer_html  accroche + pastille URL (peut être vide)
+
+    Valeurs :
+      $font_family  famille de fonte          $h1_size    taille du titre (px)
+      $title/$desc  textes échappés           $tag        pastille catégorie
+      $specs_cls    « specs » ou « specs specs--tight » (≥4 lignes)
+
+    Charte commune : dans slide_base.css (injecté à la ligne @import
+    ci-dessous). Ce gabarit ne contient que ses métriques (:root) et sa
+    composition propre (main/left/right).
+
+  Le rendu est autonome (fontes et images embarquées en data URI) :
+  le fichier HTML généré s'ouvre tel quel dans un navigateur.
 -->
 <html lang="fr"><head><meta charset="utf-8">
 <style>
 $font_faces
-*{margin:0;box-sizing:border-box}
-html,body{width:1920px;height:1080px;overflow:hidden}
-body{font-family:$font_family;color:$ink;
- background:#000;display:flex;flex-direction:column}
-.card{position:relative;flex:1;background:$bg;border-radius:72px;
- overflow:hidden;display:flex;flex-direction:column}
-.watermark{position:absolute;z-index:0;color:rgba(255,255,255,.35)}
-.watermark svg,.watermark img{display:block;width:820px;height:820px;
- object-fit:contain}
-.watermark--tr{top:-260px;right:-260px}
-.watermark--bl{bottom:-260px;left:-260px}
-main{position:relative;flex:1;display:flex;gap:70px;padding:54px 64px;
- min-height:0}
-.left{flex:0 0 780px;position:relative;min-height:0}
-.photo{position:absolute;inset:0;width:100%;height:100%;
- object-fit:cover;border-radius:48px;display:block;background:$dark}
-.photo--empty{display:block}
-.photo--empty>svg{position:absolute;inset:0;width:100%;height:100%}
-.ph-logo{position:absolute;inset:0;display:flex;align-items:center;
- justify-content:center;color:rgba(20,20,20,.75)}
-.ph-logo svg,.ph-logo img{width:52%;height:auto}
-.tag{position:absolute;left:32px;bottom:32px;z-index:2;background:#fff;
- border-radius:2em;padding:12px 36px;font-size:31px;font-weight:500;
- box-shadow:0 10px 34px rgba(20,20,20,.14)}
-.credit{position:absolute;right:24px;bottom:24px;z-index:2;font-size:18px;
- line-height:1.3;max-width:420px;text-align:right;color:#fff;
- background:rgba(20,20,20,.45);border-radius:1.2em;padding:5px 16px}
-.right{flex:1;display:flex;flex-direction:column;padding:40px 0;
- min-height:0}
-h1{font-size:80px;font-weight:500;line-height:1.06;letter-spacing:-.01em;
- display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;
- overflow:hidden}
-.desc{font-size:34px;line-height:1.38;color:rgba(20,20,20,.78);
- margin-top:36px;max-width:860px;display:-webkit-box;
- -webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
-.specs{margin-top:auto;display:flex;flex-direction:column;gap:26px}
-.specs--tight{gap:16px}
-.specs--tight .spec{font-size:33px}
-.spec{display:flex;align-items:center;gap:18px;font-size:38px;
- font-weight:500}
-.spec svg{flex:0 0 auto}
-.attrib{position:absolute;right:44px;bottom:30px;font-size:21px;
- color:rgba(20,20,20,.45);display:flex;align-items:center;gap:14px}
-.attrib b{font-size:28px;font-weight:500;color:#efeae6;
- background:#555555;border-radius:2em;padding:10px 28px}
+@import "slide_base.css";
+
+/* ===== Métriques propres au format paysage ==============================
+   Les propriétés consommées sont dans slide_base.css ; ajuster la diapo
+   se fait ici sans toucher à la charte commune. */
+:root {
+    --card-radius: 72px;
+    --card-pad: 0;
+    --card-gap: 0;
+
+    --wm-size: 820px;          /* filigranes de logo */
+    --wm-offset: -260px;       /* débordement hors de la carte */
+
+    --photo-pos: center;       /* cadrage du visuel */
+    --photo-radius: 48px;
+
+    --tag-inset: 32px;         /* distance de la pastille au bord du visuel */
+    --tag-pad: 12px 36px;
+    --tag-size: 31px;
+
+    --credit-inset: 24px;
+    --credit-size: 18px;
+    --credit-maxw: 420px;
+    --credit-pad: 5px 16px;
+
+    --h1-lines: 4;
+    --desc-size: 34px;
+    --desc-lh: 1.38;
+    --desc-mt: 36px;
+    --desc-lines: 6;
+    --desc-maxw: 860px;
+
+    --specs-gap: 26px;
+    --specs-gap-tight: 16px;
+    --specs-pad-bottom: 0;
+    --spec-size: 38px;
+    --spec-size-tight: 33px;
+    --spec-gap: 18px;
+    --spec-icon: auto;         /* taille native des icônes (42 px) */
+
+    --attrib-size: 21px;
+    --attrib-right: 44px;
+    --attrib-bottom: 30px;
+    --attrib-gap: 14px;
+    --attrib-b-size: 28px;
+    --attrib-b-pad: 10px 28px;
+}
+
+/* ===== Composition : visuel à gauche, textes à droite =================== */
+
+html, body {
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+}
+
+main {
+    position: relative;
+    flex: 1;
+    display: flex;
+    gap: 70px;
+    padding: 54px 64px;
+    min-height: 0;
+}
+
+/* Colonne visuel : largeur fixe, la photo la remplit (base CSS). */
+.left {
+    flex: 0 0 780px;
+    position: relative;
+    min-height: 0;
+}
+
+/* Colonne textes : specs poussées en bas via margin-top:auto (.specs). */
+.right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 40px 0;
+    min-height: 0;
+}
 </style></head><body>
 <div class="card">
-<div class="watermark watermark--tr">$logo_html</div>
-<div class="watermark watermark--bl">$logo_html</div>
-<main>
-  <div class="left">
-    $media
-    <span class="tag">$tag</span>
-  </div>
-  <div class="right">
-    <h1 style="font-size:${h1_size}px">$title</h1>
-    <p class="desc">$desc</p>
-    <div class="$specs_cls">$specs_html</div>
-  </div>
-</main>
-<div class="attrib">$footer_html</div>
+  <div class="watermark watermark--tr">$logo_html</div>
+  <div class="watermark watermark--bl">$logo_html</div>
+  <main>
+    <div class="left">
+      $media
+      <span class="tag">$tag</span>
+    </div>
+    <div class="right">
+      <h1 style="font-size:${h1_size}px">$title</h1>
+      <p class="desc">$desc</p>
+      <div class="$specs_cls">$specs_html</div>
+    </div>
+  </main>
+  <div class="attrib">$footer_html</div>
 </div>
 </body></html>
