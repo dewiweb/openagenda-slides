@@ -1,6 +1,7 @@
 # OpenAgenda Slides
 
-Transforme **votre agenda OpenAgenda en diaporama d'écrans** : l'app
+Transforme **votre agenda [OpenAgenda](https://openagenda.com) en
+diaporama d'écrans** : l'app
 génère automatiquement une belle diapositive par événement (image,
 date, lieu, tarif, public…) pour vos téléviseurs, bornes ou panneaux
 d'affichage — en paysage 16:9, en portrait 9:16 ou en A4 imprimable.
@@ -13,7 +14,8 @@ agenda, cliquez sur **Générer**.
   <img src="docs/screenshots/window-general.png" width="80%" alt="Fenêtre de l'application">
 </p>
 
-> **English** — turns any public OpenAgenda agenda into ready-to-broadcast
+> **English** — turns any public [OpenAgenda](https://openagenda.com)
+> agenda into ready-to-broadcast
 > slides (16:9, 9:16 portrait, A4), for TVs and digital signage.
 > Portable Windows app / Linux AppImage, no install, no technical
 > skills required. [Quickstart in English](#english-quickstart) below.
@@ -65,9 +67,11 @@ Cliquez **Tester la connexion** : l'app vous confirme le nom de
 l'agenda trouvé et le nombre d'événements publiés.
 
 > **Clé API ? Optionnelle.** Sans clé, l'app utilise l'export public
-> de votre agenda — ça marche tel quel. La clé v2 (gratuite, dans les
-> paramètres de votre compte OpenAgenda) apporte une taxonomie plus
-> complète et évite de dépendre de l'export legacy, déprécié.
+> de votre agenda — ça marche tel quel. La
+> [clé de lecture](https://doc.openagenda.com/fr/article/cles-dacces-11lapqz/)
+> (gratuite, page [API de votre compte](https://openagenda.com/settings/apiKey))
+> apporte une taxonomie plus complète et évite de dépendre de
+> l'export legacy, déprécié.
 
 ### 2. Choisissez les catégories à diffuser
 
@@ -175,7 +179,8 @@ d'environnement `OASLIDES_*` correspondante prime toujours.
 ## Questions fréquentes
 
 **La connexion échoue / aucun événement ?**
-Vérifiez le slug dans l'adresse de votre agenda sur openagenda.com.
+Vérifiez le slug dans l'adresse de votre agenda sur
+[openagenda.com](https://openagenda.com).
 L'agenda doit être **public** — et avoir des événements publiés à
 venir ou en cours.
 
@@ -224,8 +229,10 @@ Packaging : `pyinstaller app.spec` puis `appimage/build-appimage.sh` ;
 les Releases sont construites par GitHub Actions à chaque tag `v*`.
 
 Projet dérivé de `nextevents-desktop` (Les Champs Libres, Rennes),
-réécrit en version générique : source unique OpenAgenda, aucune
-dépendance au site d'une organisation.
+réécrit en version générique : source unique
+[OpenAgenda](https://openagenda.com), aucune dépendance au site d'une
+organisation. Outil communautaire indépendant, non affilié à
+OpenAgenda.
 
 ### Limites connues
 
@@ -234,12 +241,15 @@ dépendance au site d'une organisation.
 - L'extraction des intervenants/animateurs pour la diapo du jour est
   heuristique (`<strong>`, « animée par… ») : vide plutôt que fausse
   chez des agendas au style de rédaction différent.
+- Les champs personnalisés (`custom`) des agendas ne sont pas
+  affichés.
 
 ---
 
 ## English quickstart
 
-**OpenAgenda Slides** turns any *public* OpenAgenda agenda into a set
+**OpenAgenda Slides** turns any *public*
+[OpenAgenda](https://openagenda.com) agenda into a set
 of event slides, ready for TVs, kiosks and digital signage — landscape
 16:9, portrait 9:16, or printable A4.
 
@@ -249,6 +259,7 @@ of event slides, ready for TVs, kiosks and digital signage — landscape
    *More info → Run anyway*).
 2. Launch it, type your agenda slug (the name in
    `openagenda.com/agendas/<your-agenda>`), click **Générer**.
+   Find or create your agenda on [openagenda.com](https://openagenda.com).
 3. No API key needed — the app uses the agenda's public export.
    An OpenAgenda v2 key (free, in your account settings) is
    recommended for richer taxonomies and longevity.
@@ -257,5 +268,3 @@ Branding (colors, logo, font, footer, per-format layout metrics) is
 adjusted in the **Style** tab with a live preview; slides can be
 pushed automatically to an FTP server, an SMB share or another folder.
 The interface is French — everything else is language-agnostic.
-- Les champs personnalisés (`custom`) des agendas ne sont pas
-  affichés.
