@@ -108,7 +108,7 @@ class UiCollisionTest(unittest.TestCase):
         ui = ROOT / "ui"
         seen, dup = {}, []
         for fname in ("tabs_general.py", "tabs_destinations.py",
-                      "tabs_gallery.py", "today.py"):
+                      "tabs_gallery.py", "tabs_style.py", "today.py"):
             tree = ast.parse((ui / fname).read_text("utf-8"))
             for node in ast.walk(tree):
                 if not isinstance(node, ast.ClassDef):

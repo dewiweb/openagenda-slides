@@ -38,6 +38,9 @@ DEFAULTS = {
     "spec_overrides": "",       # « Clé = valeur forcée »/ligne
     "next_label": "Prochaine séance : ",  # préfixe récurrent (vide =
     #                                     date seule)
+    "style_overrides": {},      # onglet Style : {orientation:
+    #                           {"--var-css": "valeur"}} — seuls les
+    #                           écarts au défaut du gabarit sont gardés
     # ——— fenêtre de génération ———
     "interval_min": 0,
     "sched_times": "",
@@ -106,11 +109,13 @@ def load_settings():
     out = dict(DEFAULTS)
     for k, d in DEFAULTS.items():
         v = s.get(k, d)
-        if isinstance(d, int):
+        if isinstance(d, bool) or isinstance(d, int):
             try:
                 out[k] = int(v)
             except (TypeError, ValueError):
                 pass
+        elif isinstance(d, dict):
+            out[k] = v if isinstance(v, dict) else dict(d)
         else:
             out[k] = str(v)
     # secrets : env var puis trousseau OS priment sur le fichier ;

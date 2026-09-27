@@ -53,6 +53,7 @@ TEMPLATES = {
 _TEMPLATES = {}
 _BASE_CSS = None
 _BRAND = None
+_CFG = None
 
 
 def portrait_size(size, fmt="a4"):
@@ -95,6 +96,32 @@ def _template(orientation="landscape"):
         _TEMPLATES[orientation] = Template(
             src.replace(BASE_CSS_IMPORT, _base_css()))
     return _TEMPLATES[orientation]
+
+
+def template_vars(orientation="landscape"):
+    """Métriques d'un gabarit : valeurs `--var` déclarées dans son bloc
+    :root (lues dans le fichier — source unique, pas de doublon ici)."""
+    src = (ASSET_DIR / TEMPLATES[orientation]).read_text("utf-8")
+    m = re.search(r":root\s*\{(.*?)\}", src, re.S)
+    if not m:
+        return {}
+    return {k.strip(): v.strip() for k, v in
+            re.findall(r"(--[\w-]+)\s*:\s*([^;]+?)\s*;", m.group(1))}
+
+
+def _style_css(orientation):
+    """Surcharges utilisateur → déclarations `--var:val;` injectées en
+    fin du bloc :root du gabarit (clé `style_overrides` des réglages,
+    remplie par l'onglet Style). Clés et valeurs validées : jamais de
+    CSS arbitraire dans un fichier rendu."""
+    ovr = ((_CFG or {}).get("style_overrides") or {}).get(
+        orientation) or {}
+    return "".join(
+        f"{k}:{str(v).strip()};"
+        for k, v in ovr.items()
+        if re.fullmatch(r"--[\w-]+", str(k))
+        and re.fullmatch(r"-?\d+(\.\d+)?(px|%|em)?|none|auto",
+                         str(v).strip()))
 
 
 def _hex(value, default):
@@ -146,8 +173,9 @@ def _logo_html(path_str):
 
 def brand(cfg=None):
     """Identité visuelle issue des réglages (mise en cache — la génération
-    la lit une fois par run)."""
-    global _BRAND
+    la lit une fois par run). `cfg` est mémorisée pour les surcharges de
+    style (_style_css)."""
+    global _BRAND, _CFG
     if cfg is None:
         if _BRAND is None:
             from .settings import load_settings
@@ -174,6 +202,7 @@ def brand(cfg=None):
     b["dark"] = _darker(b["bg"])
     if cfg is not None:
         _BRAND = b
+        _CFG = cfg
     return b
 
 
@@ -280,6 +309,7 @@ def slide_html(ev, idx, fonts, orientation="landscape"):
         specs_html=specs_html,
         logo_html=b["logo"],
         footer_html=footer,
+        style_overrides=_style_css(orientation),
     )
 
 

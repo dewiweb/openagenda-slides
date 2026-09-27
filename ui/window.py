@@ -34,6 +34,7 @@ from .style import STYLE, WheelGuard  # noqa: F401 — ré-export pour ui.app
 from .tabs_general import GeneralTabMixin
 from .tabs_destinations import DestinationsTabMixin
 from .tabs_gallery import GalleryTabMixin
+from .tabs_style import StyleTabMixin
 from .today import TodayTab
 
 
@@ -65,7 +66,7 @@ def open_dir(path):
 
 
 class MainWindow(GeneralTabMixin, DestinationsTabMixin, GalleryTabMixin,
-                 QMainWindow):
+                 StyleTabMixin, QMainWindow):
     generate_done = Signal()  # émis dans le thread UI à la fin d'un run
     test_done = Signal(str, str)     # proto, résultat (thread worker)
     series_done = Signal(list)       # détection des séries (worker)
@@ -75,6 +76,7 @@ class MainWindow(GeneralTabMixin, DestinationsTabMixin, GalleryTabMixin,
     regen_done = Signal(str, str)    # rel diapo + message de fin
     update_done = Signal(str, str)   # tag release, url ou erreur
     preview_done = Signal(str, str)  # chemin PNG aperçu, ou erreur
+    style_done = Signal(str, str)    # aperçu de l'onglet Style
     oa_info = Signal(str)            # nom d'agenda découvert (test OA)
 
     def __init__(self, tray_ok, icon_path):
@@ -120,10 +122,12 @@ class MainWindow(GeneralTabMixin, DestinationsTabMixin, GalleryTabMixin,
         tabs = QTabWidget()
         tabs.setDocumentMode(True)
         self._tab_general = self._general_tab()
+        self._tab_style = self._style_tab()
         self._tab_dest = self._destinations_tab()
         self.today_tab = TodayTab(self)
         self._tab_ss = self._gallery_tab()
         tabs.addTab(self._tab_general, "Général")
+        tabs.addTab(self._tab_style, "Style")
         tabs.addTab(self._tab_dest, "Destinations")
         tabs.addTab(self.today_tab, "Diapo du jour")
         tabs.addTab(self._tab_ss, "Galerie")
@@ -157,6 +161,7 @@ class MainWindow(GeneralTabMixin, DestinationsTabMixin, GalleryTabMixin,
         self.thumbs_append.connect(self._append_gallery)
         self.update_done.connect(self._on_update_done)
         self.preview_done.connect(self._on_preview_done)
+        self.style_done.connect(self._on_style_done)
         self.oa_info.connect(self._on_oa_info)
 
         self._timer = QTimer(self, interval=500, timeout=self._poll)
@@ -227,6 +232,7 @@ class MainWindow(GeneralTabMixin, DestinationsTabMixin, GalleryTabMixin,
                 f"{k} = {ov.text().strip()}"
                 for k, (_, ov) in self._spec_rows.items()
                 if ov.text().strip()),
+            style_overrides=self._style_collect(),
             next_label=self.next_label.text(),
             ftp_host=self.ftp_host.text().strip(),
             ftp_port=self.ftp_port.value(),
@@ -407,6 +413,7 @@ class MainWindow(GeneralTabMixin, DestinationsTabMixin, GalleryTabMixin,
         self.local_dir.setText(s["local_dir"])
         self.local_ls.setChecked(bool(s.get("local_send_landscape", 1)))
         self.local_pt.setChecked(bool(s.get("local_send_portrait", 0)))
+        self._style_load(s.get("style_overrides"))
         self.oa_agenda.setText(s.get("oa_agenda") or "")
         self.tag_group.setEditText(s.get("tag_group") or "")
         self.org_name.setText(s.get("org_name") or "")

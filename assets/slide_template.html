@@ -10,16 +10,17 @@
   Rempli par oaslides/slide.py via string.Template :
 
     Blocs injectés :
-      $font_faces   déclarations @font-face (fontes embarquées)
-      $media        visuel : <img class="photo"> ou placeholder + logo
-      $specs_html   lignes d'info (<div class="spec">icône + texte</div>)
-      $logo_html    logo de la structure (SVG inline ou <img>)
-      $footer_html  accroche + pastille URL (peut être vide)
+      $$font_faces   déclarations @font-face (fontes embarquées)
+      $$media        visuel : <img class="photo"> ou placeholder + logo
+      $$specs_html   lignes d'info (<div class="spec">icône + texte</div>)
+      $$logo_html    logo de la structure (SVG inline ou <img>)
+      $$footer_html  accroche + pastille URL (peut être vide)
 
     Valeurs :
-      $font_family  famille de fonte          $h1_size    taille du titre (px)
-      $title/$desc  textes échappés           $tag        pastille catégorie
-      $specs_cls    « specs » ou « specs specs--tight » (≥4 lignes)
+      $$font_family  famille de fonte          $$h1_size    taille du titre (px)
+      $$title/$$desc  textes échappés           $$tag        pastille catégorie
+      $$specs_cls    « specs » ou « specs specs--tight » (≥4 lignes)
+      $$style_overrides  surcharges --var de l'onglet Style (fin de :root)
 
     Charte commune : dans slide_base.css (injecté à la ligne @import
     ci-dessous). Ce gabarit ne contient que ses métriques (:root) et sa
@@ -77,6 +78,9 @@ $font_faces
     --attrib-gap: 14px;
     --attrib-b-size: 28px;
     --attrib-b-pad: 10px 28px;
+
+    /* surcharges de l'onglet Style de l'app (vide = défauts) */
+    $style_overrides
 }
 
 /* ===== Composition : visuel à gauche, textes à droite =================== */

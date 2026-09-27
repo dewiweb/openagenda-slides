@@ -3,11 +3,11 @@
   ==========================================================================
   Gabarit « diapo du jour » (1920×1080, paysage)
   ==========================================================================
-  Affichée en direct pendant un événement. Version SOMBRE (fond $bg, texte
-  $light) : composition centrée, logo en filigrane, pas de visuel — titre,
+  Affichée en direct pendant un événement. Version SOMBRE (fond $$bg, texte
+  $$light) : composition centrée, logo en filigrane, pas de visuel — titre,
   intervenants et leurs qualités, animateur, notes, accessibilité.
 
-  Deux variantes pilotées par $variant (« gt » si événement de série) :
+  Deux variantes pilotées par $$variant (« gt » si événement de série) :
     - simple : pastille catégorie en haut à gauche
     - série  : grand rond accentué (ou logo de série), titre en majuscules
 
@@ -17,19 +17,19 @@
   Rempli par oaslides/today.py via string.Template :
 
     Blocs injectés :
-      $font_faces      déclarations @font-face (fontes embarquées)
-      $badge_html      pastille catégorie ou rond/logo de série
-      $speakers_html   blocs intervenant (<div class="speaker">)
-      $footer_html     « animé par » + notes + accessibilité
+      $$font_faces      déclarations @font-face (fontes embarquées)
+      $$badge_html      pastille catégorie ou rond/logo de série
+      $$speakers_html   blocs intervenant (<div class="speaker">)
+      $$footer_html     « animé par » + notes + accessibilité
                        (vide = aucun espace occupé)
-      $logo_html       logo de la structure (SVG inline ou <img>)
+      $$logo_html       logo de la structure (SVG inline ou <img>)
 
     Valeurs :
-      $font_family     famille de fonte      $bg        fond sombre
-      $accent          couleur d'accent      $light     texte principal
-      $badge_bg        fond du rond de série $variant   « gt » ou vide
-      $h1_size         taille du titre (px)  $title     titre échappé
-      $speakers_label  « Avec » (vide si pas d'intervenant)
+      $$font_family     famille de fonte      $$bg        fond sombre
+      $$accent          couleur d'accent      $$light     texte principal
+      $$badge_bg        fond du rond de série $$variant   « gt » ou vide
+      $$h1_size         taille du titre (px)  $$title     titre échappé
+      $$speakers_label  « Avec » (vide si pas d'intervenant)
 -->
 <html lang="fr"><head><meta charset="utf-8">
 <style>
@@ -120,7 +120,7 @@ body {
 /* ---------- Titre, filet, rythme vertical --------------------------------- */
 
 h1 {
-    font-size: 80px;          /* écrasé par le style inline $h1_size*--k */
+    font-size: 80px;          /* écrasé par le style inline $$h1_size*--k */
     font-weight: 500;
     line-height: 1.08;
     letter-spacing: -.01em;
@@ -321,23 +321,23 @@ h1 {
   $footer_html
 </div>
 <script>
-// Auto-fit : réduit --k par paliers de 6% tant que le contenu déborde
-// de la carte (scrollHeight > clientHeight — .card a overflow:hidden,
-// le dépassement reste mesurable). Rejoué une fois les fontes chargées
-// (métriques réelles), avec possibilité de revenir vers 1 si la fonte
-// de repli surestimait l'encombrement.
+ Auto-fit : réduit --k par paliers de 6% tant que le contenu déborde
+ de la carte (scrollHeight > clientHeight — .card a overflow:hidden,
+ le dépassement reste mesurable). Rejoué une fois les fontes chargées
+ (métriques réelles), avec possibilité de revenir vers 1 si la fonte
+ de repli surestimait l'encombrement.
 (function () {
   var de = document.documentElement;
   function fits() {
     var c = document.querySelector('.card');
-    // la carte ne doit pas déborder (contenu poussé sous le bord)
+     la carte ne doit pas déborder (contenu poussé sous le bord)
     if (c.scrollHeight > c.clientHeight + 2) return false;
-    // les intervenants doivent rester à ≥16 px du filet du pied de
-    // page — sinon la dernière ligne de qualité colle au séparateur
+     les intervenants doivent rester à ≥16 px du filet du pied de
+     page — sinon la dernière ligne de qualité colle au séparateur
     var spk = document.querySelector('.speakers');
     if (spk && spk.firstElementChild) {
       var r = spk.getBoundingClientRect();
-      // contenu centré dans .middle : déborde aussi par le haut
+       contenu centré dans .middle : déborde aussi par le haut
       var m = document.querySelector('.middle').getBoundingClientRect();
       if (r.top < m.top) return false;
       var mod = document.querySelector('.mod');

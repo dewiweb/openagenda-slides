@@ -27,8 +27,12 @@ Les diapos sont dessinées en HTML/CSS, remplies par `oaslides/slide.py`
 
 ## Modifier un gabarit
 
-- Couleurs, logo, fonte, accroche : **depuis l'onglet Réglages de l'app**
-  (pas besoin de toucher au HTML).
+- Réglages courants (arrondis, tailles de texte, lignes max,
+  filigranes) : **depuis l'onglet Style de l'app** — aperçu en direct,
+  sans toucher aux fichiers. Les valeurs retouchées sont injectées en
+  fin de `:root` via `$style_overrides`.
+- Couleurs, logo, fonte, accroche : **depuis l'onglet Réglages de
+  l'app** (pas besoin de toucher au HTML).
 - Taille des textes, espacements, rayons, position des éléments :
   le bloc `:root` du gabarit concerné.
 - Forme d'un élément commun (pastille, filet, filigrane…) :

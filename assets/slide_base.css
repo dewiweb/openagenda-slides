@@ -11,10 +11,10 @@
    ce fichier, valable pour les trois orientations.
 
    Placeholders string.Template remplis par slide.py au rendu :
-     $font_family   famille de fonte (réglage « font_family » ou repli)
-     $ink           couleur d'encre du texte courant
-     $bg            fond de la carte (réglage « card_bg »)
-     $dark          variante foncée de $bg (fond du bloc visuel)
+     $$font_family   famille de fonte (réglage « font_family » ou repli)
+     $$ink           couleur d'encre du texte courant
+     $$bg            fond de la carte (réglage « card_bg »)
+     $$dark          variante foncée de $$bg (fond du bloc visuel)
    ========================================================================== */
 
 
@@ -144,7 +144,7 @@ body {
 
 /* ---------- Titre & description ------------------------------------------ */
 
-/* La taille du titre est fixée inline par slide.py ($h1_size) selon la
+/* La taille du titre est fixée inline par slide.py ($$h1_size) selon la
    longueur du titre ; ici seulement le nombre de lignes max. */
 h1 {
     font-weight: 500;

@@ -140,6 +140,15 @@ vous n'avez qu'à compléter les libellés.
 - **Paysage** : HD 1920×1080 ou UHD 3840×2160.
 - **Portrait** : *A4 impression* ou *9:16 écran*.
 
+### Onglet Style — retouche visuelle
+
+L'onglet **Style** règle la mise en page de chaque format (arrondis,
+tailles de texte, nombre de lignes, filigranes…) avec un **aperçu réel
+re-rendu à chaque modification** — débrayable via « Aperçu
+automatique ». Seuls les écarts au gabarit d'origine sont enregistrés ;
+« Réinitialiser ce format » restaure tout. Pour aller plus loin, les
+gabarits HTML eux-mêmes sont documentés dans `assets/README.md`.
+
 ### Sécurité
 
 Mots de passe et clé API partent dans le **trousseau de votre système**
