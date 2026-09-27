@@ -353,14 +353,20 @@ class StyleTabMixin:
 
         def work():
             import oaslides.slide as sl
-            prev_brand, prev_cfg = sl._BRAND, sl._CFG
             try:
-                sl.brand(cfg)
+                # identité calculée depuis l'état UI et passée
+                # explicitement — les globaux _BRAND/_CFG restent
+                # intouchés (une génération concurrente ne serait pas
+                # polluée, et l'aperçu n'écrase rien en repartant)
                 ev = _sample_event()
-                html = sl.slide_html(ev, 0, _fonts(), ori)
-                d = tempfile.mkdtemp(prefix="oaslides-style-")
-                hp = Path(d) / "style.html"
-                pp = Path(d) / "style.png"
+                html = sl.slide_html(ev, 0, _fonts(), ori,
+                                     b=sl.build_brand(cfg), cfg=cfg)
+                # chemin fixe, écrasé à chaque rendu — pas de fuite
+                # de répertoires temporaires
+                d = Path(tempfile.gettempdir()) / "oaslides-style"
+                d.mkdir(exist_ok=True)
+                hp = d / f"preview-{ori}.html"
+                pp = d / f"preview-{ori}.png"
                 hp.write_text(html, encoding="utf-8")
                 w, h = sl.DESIGNS[ori]
                 list(sl.render_all([(hp, pp)],
@@ -368,8 +374,6 @@ class StyleTabMixin:
                 self.style_done.emit(str(pp), "")
             except Exception as ex:
                 self.style_done.emit("", str(ex))
-            finally:
-                sl._BRAND, sl._CFG = prev_brand, prev_cfg
 
         threading.Thread(target=work, daemon=True).start()
 
@@ -406,6 +410,10 @@ class StyleTabMixin:
             return
         names = [re.sub(r"^['\"]|['\"]$", "", n.strip())
                  for n in raw.split(",") if n.strip()]
+        if not names:  # saisie type « ,, » : rien de résolvable
+            self.font_hint.setText("pile système par défaut")
+            self.font_hint.setStyleSheet("")
+            return
         try:
             emb = {f.casefold() for f in _fonts()["families"]}
         except Exception:
@@ -484,7 +492,6 @@ class StyleTabMixin:
         def work():
             try:
                 import oaslides.slide as sl
-                sl._BRAND = sl._CFG = None  # relecture des réglages
                 cfg = load_settings()
                 from oaslides.oa import oa_list_events, filter_categories
                 from oaslides.extract import parse_cats
@@ -503,7 +510,8 @@ class StyleTabMixin:
                 out.mkdir(parents=True, exist_ok=True)
                 hp, pp = out / "_preview.html", out / "_preview.png"
                 hp.write_text(
-                    sl.slide_html(e, 0, ensure_fonts()), "utf-8")
+                    sl.slide_html(e, 0, ensure_fonts(), cfg=cfg),
+                    "utf-8")
                 size = sl.SIZES.get(cfg.get("resolution"), sl.DEFAULT_SIZE)
                 list(sl.render_all([(hp, pp)], size=size))
                 self.preview_done.emit(str(pp), "")

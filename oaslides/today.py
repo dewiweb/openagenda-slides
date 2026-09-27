@@ -12,7 +12,7 @@ from string import Template
 from .media import ensure_fonts
 from .paths import ASSET_DIR
 from .settings import OUT_DIR, resolve_out_dir
-from .slide import brand, _file_uri
+from .slide import DEFAULT_FONT, brand, _file_uri
 
 _TEMPLATE = None
 
@@ -29,14 +29,19 @@ def _template():
     return _TEMPLATE
 
 
-def today_html(data, fonts):
+def today_html(data, fonts, b=None):
     """data : {title, tag, accent, bg, speakers[{name, quality}],
-    moderator, note, access, series, series_logo}.
+    moderator, note, access, series, series_logo}. `b` optionnel :
+    identité déjà calculée (worker) — sinon cache des réglages.
     Renvoie le HTML autonome (fontes embarquées), version sombre :
     fond sombre, texte clair, accent en contraste. Si `series` est
     renseigné, la composition passe en mode « série » : badge rond,
     titre majuscule."""
-    b = brand()
+    b = b or brand()
+    # pile de fontes : réglage > fonts/ embarquées > système — le
+    # dernier repli est indispensable : une famille saisie absente du
+    # système rendrait en serif par défaut du navigateur
+    family = b["font_family"] or fonts.get("family") or ""
     accent = data.get("accent") or b["accent"]
     if not re.fullmatch(r"#[0-9a-fA-F]{6}", accent):
         accent = "#e2dff0"
@@ -105,7 +110,8 @@ def today_html(data, fonts):
     n = len(title)
     return _template().substitute(
         font_faces=fonts.get("faces", ""),
-        font_family=b["font_family"] or fonts.get("family"),
+        font_family=f"{family}, {DEFAULT_FONT}"
+                    if family else DEFAULT_FONT,
         accent=accent,
         bg=bg,
         light="#efeae6",
@@ -121,14 +127,16 @@ def today_html(data, fonts):
     )
 
 
-def write_today(data, out_dir=None):
-    """Écrit today/index.html et renvoie son chemin. Nettoie au passage
-    les restes d'anciennes générations (qr.*)."""
+def write_today(data, out_dir=None, b=None):
+    """Écrit today/index.html et renvoie son chemin. `b` optionnel :
+    identité pré-calculée (évite le cache global en worker). Nettoie
+    au passage les restes d'anciennes générations (qr.*)."""
     out = Path(out_dir) if out_dir else OUT_DIR
     d = out / "today"
     d.mkdir(parents=True, exist_ok=True)
     dest = d / "index.html"
-    dest.write_text(today_html(data, ensure_fonts()), encoding="utf-8")
+    dest.write_text(today_html(data, ensure_fonts(), b=b),
+                    encoding="utf-8")
     for f in ("qr.html", "qr.png"):
         (d / f).unlink(missing_ok=True)
     return dest

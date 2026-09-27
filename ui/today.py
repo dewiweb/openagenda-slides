@@ -362,11 +362,14 @@ class TodayTab(QWidget):
         def work():
             from oaslides.today import (push_today, render_today_png,
                                           write_today)
+            from oaslides.slide import build_brand
             cfg = load_settings()
             out = resolve_out_dir(cfg)
             errors = []
             try:
-                write_today(data, out)
+                # identité recalculée — le cache _BRAND peut être
+                # périmé (réglages retouchés depuis le dernier run)
+                write_today(data, out, b=build_brand(cfg))
                 render_today_png(
                     SIZES.get(cfg.get("resolution"), DEFAULT_SIZE), out)
             except Exception as e:

@@ -109,13 +109,14 @@ def template_vars(orientation="landscape"):
             re.findall(r"(--[\w-]+)\s*:\s*([^;]+?)\s*;", m.group(1))}
 
 
-def _style_css(orientation):
+def _style_css(orientation, cfg=None):
     """Surcharges utilisateur → déclarations `--var:val;` injectées en
     fin du bloc :root du gabarit (clé `style_overrides` des réglages,
     remplie par l'onglet Style). Clés et valeurs validées : jamais de
-    CSS arbitraire dans un fichier rendu."""
-    ovr = ((_CFG or {}).get("style_overrides") or {}).get(
-        orientation) or {}
+    CSS arbitraire dans un fichier rendu. `cfg` explicite = rendu hors
+    du cache global (aperçus en worker)."""
+    ovr = (((_CFG if cfg is None else cfg) or {})
+           .get("style_overrides") or {}).get(orientation) or {}
     return "".join(
         f"{k}:{str(v).strip()};"
         for k, v in ovr.items()
@@ -171,17 +172,10 @@ def _logo_html(path_str):
     return f'<img src="{uri}">' if uri else ""
 
 
-def brand(cfg=None):
-    """Identité visuelle issue des réglages (mise en cache — la génération
-    la lit une fois par run). `cfg` est mémorisée pour les surcharges de
-    style (_style_css)."""
-    global _BRAND, _CFG
-    if cfg is None:
-        if _BRAND is None:
-            from .settings import load_settings
-            cfg = load_settings()
-        else:
-            return _BRAND
+def build_brand(cfg):
+    """Identité visuelle calculée depuis un dict de réglages — pure,
+    aucun cache : les aperçus en worker l'utilisent sans toucher aux
+    globaux _BRAND/_CFG (course possible avec une génération)."""
     agenda = (cfg.get("oa_agenda") or "").strip()
     url = (cfg.get("program_url") or "").strip()
     if not url and agenda:
@@ -190,8 +184,10 @@ def brand(cfg=None):
         "accent": _hex(cfg.get("accent"), "#e2dff0"),
         "bg": _hex(cfg.get("card_bg"), "#efeae6"),
         "logo": _logo_html(cfg.get("logo_path")),
-        "font_family": (cfg.get("font_family") or "").strip()
-                       or DEFAULT_FONT,
+        # valeur brute (vide possible) : la composition de la pile —
+        # réglage > fonts/ embarquées > système — se fait dans
+        # slide_html/today_html au moment de la substitution
+        "font_family": (cfg.get("font_family") or "").strip(),
         # affichage sans schéma ; l'URL complète reste dispo en _full
         "program_url": re.sub(r"^https?://", "", url).rstrip("/"),
         "program_url_full": url,
@@ -200,10 +196,23 @@ def brand(cfg=None):
         "org": (cfg.get("org_name") or "").strip(),
     }
     b["dark"] = _darker(b["bg"])
-    if cfg is not None:
-        _BRAND = b
-        _CFG = cfg
     return b
+
+
+def brand(cfg=None):
+    """Identité visuelle des réglages, mise en cache. `cfg` explicite
+    (début d'une génération) ré-initialise le cache — sinon deux runs
+    consécutifs garderaient l'identité du premier. `cfg` est aussi
+    mémorisée pour les surcharges de style (_style_css)."""
+    global _BRAND, _CFG
+    if cfg is None:
+        if _BRAND is not None:
+            return _BRAND
+        from .settings import load_settings
+        cfg = load_settings()
+    _BRAND = build_brand(cfg)
+    _CFG = cfg
+    return _BRAND
 
 
 def _footer_html(b):
@@ -249,9 +258,13 @@ def truncate(text, limit=400):
     return cut.rstrip(".,;:!?") + "…"
 
 
-def slide_html(ev, idx, fonts, orientation="landscape"):
+def slide_html(ev, idx, fonts, orientation="landscape",
+               b=None, cfg=None):
     portrait = orientation.startswith("portrait")
-    b = brand()
+    # b/cfg explicites = rendu hors cache global (aperçu en worker) ;
+    # sinon brand() sur le cache du run courant
+    if b is None:
+        b = brand() if cfg is None else build_brand(cfg)
     tag = ev.get("tag") or ev["specs"].get("Catégorie") or "Événement"
     keys = [k for k in SPEC_ORDER if k in ev["specs"]]
     specs_html = "".join(
@@ -288,14 +301,14 @@ def slide_html(ev, idx, fonts, orientation="landscape"):
 </svg>
 <div class="ph-logo">{b['logo']}</div></div>"""
 
-    # le réglage « font_family » prime : il permet de choisir parmi
-    # plusieurs familles embarquées ; sinon première famille de fonts/
-    family = b["font_family"] or fonts.get("family")
+    # pile de fontes : réglage « font_family », sinon première famille
+    # de fonts/, et la pile système toujours en dernier repli
+    family = b["font_family"] or fonts.get("family") or ""
     footer = _footer_html(b)
     return _template(orientation).substitute(
         font_faces=fonts.get("faces", ""),
         font_family=f"{family}, {DEFAULT_FONT}"
-                    if family != DEFAULT_FONT else DEFAULT_FONT,
+                    if family else DEFAULT_FONT,
         ink=INK,
         bg=b["bg"],
         dark=b["dark"],
@@ -311,7 +324,7 @@ def slide_html(ev, idx, fonts, orientation="landscape"):
         specs_html=specs_html,
         logo_html=b["logo"],
         footer_html=footer,
-        style_overrides=_style_css(orientation),
+        style_overrides=_style_css(orientation, cfg),
     )
 
 

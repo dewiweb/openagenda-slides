@@ -406,8 +406,11 @@ class GalleryTabMixin:
                 dest = resolve_out_dir() / sub
                 (dest / "html").mkdir(exist_ok=True)
                 hp = dest / "html" / f"{stem}.html"
+                # cfg explicite : pas le cache _BRAND (possiblement
+                # périmé — un réglage retouché depuis le dernier run
+                # doit être pris en compte ici)
                 hp.write_text(
-                    slide_html(ev, 0, fonts, orientation),
+                    slide_html(ev, 0, fonts, orientation, cfg=cfg),
                     encoding="utf-8")
                 # render_all est un générateur : il faut l'itérer
                 # pour que le rendu s'exécute

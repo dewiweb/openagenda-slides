@@ -1,6 +1,6 @@
 """Médias : images d'événements (cache), fontes optionnelles.
 
-Fontes : tout fichier .woff2/.woff/.ttf déposé dans le dossier
+Fontes : tout fichier .woff2/.woff/.ttf/.otf déposé dans le dossier
 `fonts/` (à côté des assets, ou OASLIDES_FONT_DIR) est embarqué via
 @font-face ; `font_family` dans les réglages choisit la famille CSS
 (vide = pile système). Aucune fonte n'est fournie par défaut —
@@ -32,7 +32,7 @@ def ensure_fonts():
         if p.suffix.lower() not in (".woff2", ".woff", ".ttf", ".otf"):
             continue
         fmt = {"woff2": "woff2", "woff": "woff", "ttf": "truetype",
-               "otf": "opentype"}[p.suffix.lower()]
+               "otf": "opentype"}[p.suffix.lower().lstrip(".")]
         family = re.sub(r"[-_]+", " ", p.stem).strip()
         # poids heuristique depuis le nom de fichier
         w = ("700" if re.search(r"bold|black|heavy", p.stem, re.I)

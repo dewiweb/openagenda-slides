@@ -169,6 +169,11 @@ def generate(out_dir=None, max_events=0, pages=99, cfg=None,
 
     print("3/5 Fontes…")
     fonts = ensure_fonts()
+    # cache identité réinitialisé avec les réglages de CE run — sinon
+    # _BRAND survivrait d'un run à l'autre et les retouches de
+    # couleurs/logo/fonte resteraient sans effet jusqu'au redémarrage
+    from .slide import brand
+    brand(cfg or {})
 
     print(f"4/5 Génération du dossier {out}/…")
     gen_landscape = cfg is None or cfg.get("gen_landscape", 1)
