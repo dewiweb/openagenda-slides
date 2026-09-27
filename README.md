@@ -78,6 +78,10 @@ Dans **Identité visuelle** :
   sur », « Retrouvez-nous sur »… ou vide pour ne rien afficher.
 - **Logo**, **fond**, **accentuation**, **fonte** : votre charte.
   Le logo sert aussi de filigrane sur les diapos sans image.
+  *Format idéal : SVG monochrome (il est reteinté automatiquement
+  selon le contexte) ou PNG/WebP à fond transparent, plutôt carré,
+  ≥ 800 px. Le logo de série optionnel suit la même règle — il
+  remplace le rond de série dans la diapo du jour.*
 
 Le bouton **Aperçu d'une diapo** rend un vrai événement avec vos
 réglages — itérez sur les couleurs sans attendre une génération

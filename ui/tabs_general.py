@@ -190,6 +190,12 @@ class GeneralTabMixin:
         self.series_map.setMaximumHeight(72)
         self.series_map.setPlaceholderText(
             "grandstemoins = Les grands témoins | logo-gt.png")
+        self.series_map.setToolTip(
+            "Une ligne par série : mot-clé OpenAgenda = Libellé "
+            "affiché | fichier logo optionnel.\n"
+            "Logo de série : PNG ou SVG à fond transparent, plutôt "
+            "carré — il remplace le rond de série dans la diapo du "
+            "jour (affiché à ~88 % du rond, jamais rogné).")
         f.addRow(self.series_map)
         row = QHBoxLayout()
         det = QPushButton("Détecter dans les mots-clés")

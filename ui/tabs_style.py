@@ -98,7 +98,21 @@ class StyleTabMixin:
             placeholderText="Tout le programme sur / Retrouvez-nous "
                             "sur…")
         self.logo_path = QLineEdit(
-            placeholderText="SVG ou PNG — filigrane, badge série")
+            placeholderText="SVG monochrome ou PNG à fond transparent")
+        self.logo_path.setToolTip(
+            "Format attendu :\n"
+            "• SVG monochrome de préférence — il est reteinté "
+            "automatiquement selon le contexte (filigrane clair sur "
+            "fond sombre, foncé sur carte claire, dans le badge de "
+            "série). Utiliser fill=\"currentColor\" ou une couleur "
+            "unique ; un SVG multicolore gardera ses couleurs mais "
+            "pourra peu contraster.\n"
+            "• PNG/WebP : fond transparent obligatoire — sinon le "
+            "rectangle opaque apparaîtra dans les filigranes.\n"
+            "• Forme plutôt carrée : affiché dans un cadre carré, "
+            "jamais rogné (contain).\n"
+            "• Le SVG vectoriel reste net à toutes les tailles — "
+            "pour un raster, prévoir ≥ 800 px de large.")
         brow = QHBoxLayout()
         brow.addWidget(self.logo_path, 1)
         br = QPushButton("Parcourir…")
