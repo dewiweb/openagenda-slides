@@ -295,5 +295,5 @@ def _sample_event():
         "credit": "© crédit photo", "pinned": False,
         "specs": {"Date": "jeudi 12 mars à 20h00", "Durée": "1h30",
                   "Lieu": "Grande salle",
-                  "Tarifs": "10 €, gratuit -18 ans"},
+                  "Tarif": "10 €, gratuit -18 ans"},
     }
