@@ -136,6 +136,13 @@ class StyleTabMixin:
             "(Inter-SemiBold.woff2 → « Inter SemiBold »). La pile "
             "système de repli est toujours ajoutée.")
         f.addRow("Fonte", self.font_family)
+        # verdict de résolution : la pile CSS replie en silence si la
+        # famille est absente — l'aperçu resterait identique sans
+        # qu'on comprenne pourquoi
+        self.font_hint = QLabel("")
+        f.addRow("", self.font_hint)
+        self.font_family.textChanged.connect(self._font_check)
+        self._font_check()
         # identité : retouche visible à l'aperçu sans attendre le save —
         # textChanged couvre aussi la pipette et « Parcourir… » (qui ne
         # passent pas par editingFinished)
@@ -386,6 +393,46 @@ class StyleTabMixin:
                 Qt.SmoothTransformation))
 
     # ——— identité visuelle ———
+
+    def _font_check(self, *_):
+        """Indique quelle famille de la pile saisie sera réellement
+        utilisée (installées + fonts/ embarquées) — une famille absente
+        replie sans signaler, l'aperçu semble ignorer le réglage."""
+        import re
+        raw = self.font_family.text().strip()
+        if not raw:
+            self.font_hint.setText("pile système par défaut")
+            self.font_hint.setStyleSheet("")
+            return
+        names = [re.sub(r"^['\"]|['\"]$", "", n.strip())
+                 for n in raw.split(",") if n.strip()]
+        try:
+            emb = {f.casefold() for f in _fonts()["families"]}
+        except Exception:
+            emb = set()
+        generics = {"sans-serif", "serif", "monospace", "cursive",
+                    "fantasy", "system-ui"}
+        # résolution réelle via fontconfig (identique à Chromium)
+        from PySide6.QtGui import QFont, QFontInfo
+        def resolve(n):
+            if n.casefold() in emb:
+                return n  # fichier embarqué dans fonts/
+            return QFontInfo(QFont(n)).family()
+        hit = next((n for n in names
+                    if n.casefold() not in generics
+                    and resolve(n).casefold() == n.casefold()), None)
+        if hit:
+            self.font_hint.setText(f"✓ « {hit} » sera utilisée")
+            self.font_hint.setStyleSheet("color:#8fbc8f")
+            return
+        gen = next((n for n in names if n.casefold() in generics), None)
+        if gen:
+            self.font_hint.setText(f"« {gen} » → {resolve(gen)}")
+        else:
+            self.font_hint.setText(
+                f"« {names[0]} » introuvable — « {resolve(names[0])} » "
+                "à l'aperçu (ou déposer le fichier dans fonts/)")
+        self.font_hint.setStyleSheet("color:#c99483")
 
     def _style_soft_refresh(self):
         """Champ identité quitté → l'aperçu reflète la retouche (l'état

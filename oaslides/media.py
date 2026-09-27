@@ -46,7 +46,8 @@ def ensure_fonts():
         if family not in families:
             families.append(family)
     return {"faces": "".join(faces),
-            "family": families[0] if families else ""}
+            "family": families[0] if families else "",
+            "families": families}
 
 
 def download_image(ev):
