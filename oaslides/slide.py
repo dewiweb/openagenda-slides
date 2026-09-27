@@ -288,7 +288,9 @@ def slide_html(ev, idx, fonts, orientation="landscape"):
 </svg>
 <div class="ph-logo">{b['logo']}</div></div>"""
 
-    family = fonts.get("family") or b["font_family"]
+    # le réglage « font_family » prime : il permet de choisir parmi
+    # plusieurs familles embarquées ; sinon première famille de fonts/
+    family = b["font_family"] or fonts.get("family")
     footer = _footer_html(b)
     return _template(orientation).substitute(
         font_faces=fonts.get("faces", ""),

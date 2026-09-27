@@ -72,6 +72,7 @@ QLineEdit, QSpinBox, QComboBox, QPlainTextEdit {{ background:{BG};
     padding:6px 10px }}
 QLineEdit:focus, QSpinBox:focus, QComboBox:focus,
 QPlainTextEdit:focus {{ border-color:#5a5652 }}
+QSpinBox[modified="true"] {{ border:1px solid {ACCENT} }}
 QPushButton {{ background:#302f2e; color:{INK}; border:0;
     border-radius:8px; padding:9px 20px; font-weight:500 }}
 QPushButton:hover {{ background:#3a3836 }}

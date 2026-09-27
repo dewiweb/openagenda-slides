@@ -105,7 +105,7 @@ def today_html(data, fonts):
     n = len(title)
     return _template().substitute(
         font_faces=fonts.get("faces", ""),
-        font_family=fonts.get("family") or b["font_family"],
+        font_family=b["font_family"] or fonts.get("family"),
         accent=accent,
         bg=bg,
         light="#efeae6",

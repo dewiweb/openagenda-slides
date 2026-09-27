@@ -21,7 +21,7 @@ import tempfile
 import threading
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QEvent, QTimer
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QFormLayout, QFrame, QGroupBox, QHBoxLayout,
@@ -76,6 +76,8 @@ class StyleTabMixin:
         self._style_boxes = {}     # {"--var": QSpinBox}
         self._style_loading = False
         self._style_busy = False
+        self._style_pm = None      # dernier rendu, re-scalé au resize
+        self._style_seen = False   # premier affichage → premier rendu
 
         body = QHBoxLayout()
         body.setSpacing(14)
@@ -110,18 +112,27 @@ class StyleTabMixin:
         self.card_bg = self._color_row(f, "Fond des diapos", "#efeae6")
         self.accent = self._color_row(f, "Accentuation", "#e2dff0")
         self.font_family = QLineEdit(
-            placeholderText="vide = pile système · sinon nom CSS ou "
-                            "famille d'un fichier du dossier fonts/")
+            placeholderText="vide = pile système · ex. « Inter Regular » "
+                            "(famille CSS ou fichier du dossier fonts/)")
+        self.font_family.setToolTip(
+            "Famille de fonte CSS : nom seul (espaces OK, guillemets "
+            "facultatifs) ou pile « Inter, Helvetica ». Pour une fonte "
+            "embarquée, déposer le fichier dans fonts/ et écrire le nom "
+            "du fichier sans extension, tirets remplacés par des espaces "
+            "(Inter-SemiBold.woff2 → « Inter SemiBold »). La pile "
+            "système de repli est toujours ajoutée.")
         f.addRow("Fonte", self.font_family)
-        # identité : retouche visible à l'aperçu sans attendre le save
+        # identité : retouche visible à l'aperçu sans attendre le save —
+        # textChanged couvre aussi la pipette et « Parcourir… » (qui ne
+        # passent pas par editingFinished)
         for w_ in (self.org_name, self.program_url, self.footer_text,
                    self.logo_path, self.card_bg, self.accent,
                    self.font_family):
-            w_.editingFinished.connect(self._style_soft_refresh)
+            w_.textChanged.connect(self._style_soft_refresh)
         params.addWidget(ident)
 
         # ——— format + actions ———
-        head = QGroupBox("Format")
+        head = QGroupBox("Format retouché")
         h = QHBoxLayout(head)
         self.style_fmt = QComboBox()
         for label, key in ORIENTATIONS:
@@ -164,6 +175,10 @@ class StyleTabMixin:
         self.style_view.setAlignment(Qt.AlignCenter)
         self.style_view.setMinimumSize(430, 300)
         pv_lay.addWidget(self.style_view, 1)
+        hint = QLabel("L'aperçu reflète les réglages courants — "
+                      "« Enregistrer » pour les appliquer.")
+        hint.setWordWrap(True)
+        pv_lay.addWidget(hint)
         row = QHBoxLayout()
         self.style_status = QLabel("")
         row.addWidget(self.style_status, 1)
@@ -189,8 +204,25 @@ class StyleTabMixin:
             self, singleShot=True, interval=600,
             timeout=self._style_preview)
 
+        # premier rendu à la première visite de l'onglet (lazy — le
+        # démarrage de l'app ne paie pas le lancement de Chromium) ;
+        # resize de la zone → re-scale du dernier rendu
+        outer.installEventFilter(self)
+        self.style_view.installEventFilter(self)
+
         self._style_reload_boxes()
         return outer
+
+    def eventFilter(self, obj, ev):
+        if ev.type() == QEvent.Show and obj is self._tab_style \
+                and not self._style_seen:
+            self._style_seen = True
+            if self.style_auto.isChecked():
+                self._style_timer.start()
+        elif ev.type() == QEvent.Resize and obj is self.style_view \
+                and self._style_pm:
+            self._style_view_update()
+        return super().eventFilter(obj, ev)
 
     # ——— état ———
 
@@ -210,7 +242,8 @@ class StyleTabMixin:
         return float(m.group(1)) if m else 0
 
     def _style_reload_boxes(self):
-        """Remplit les champs : surcharge enregistrée sinon défaut."""
+        """Remplit les champs : surcharge enregistrée sinon défaut, avec
+        repère visuel « modifié » et défaut du gabarit en infobulle."""
         self._style_loading = True
         try:
             ovr = self._style_ovr.get(self._style_orientation()) or {}
@@ -218,8 +251,19 @@ class StyleTabMixin:
             for var, sb in self._style_boxes.items():
                 raw = ovr.get(var) or defs.get(var)
                 sb.setValue(int(round(self._style_num(raw))))
+                sb.setToolTip(f"{var} — défaut du gabarit : "
+                              f"{defs.get(var, '?')}")
+                self._style_mark(sb, var in ovr)
         finally:
             self._style_loading = False
+
+    @staticmethod
+    def _style_mark(sb, on):
+        """Bordure accentuée sur un champ dont la valeur ≠ défaut."""
+        if bool(sb.property("modified")) != on:
+            sb.setProperty("modified", on)
+            sb.style().unpolish(sb)
+            sb.style().polish(sb)
 
     def _style_fmt_changed(self, *_):
         self._style_reload_boxes()
@@ -234,7 +278,9 @@ class StyleTabMixin:
         cur = {}
         for var, sb in self._style_boxes.items():
             default = self._style_num(defs.get(var))
-            if abs(sb.value() - default) > 1e-6:
+            modified = abs(sb.value() - default) > 1e-6
+            self._style_mark(sb, modified)
+            if modified:
                 # unité du défaut conservée (px) ; sans suffixe sinon
                 unit = "px" if str(defs.get(var, "")).endswith("px") \
                     else ""
@@ -273,6 +319,12 @@ class StyleTabMixin:
         if self._style_busy:
             self._style_timer.start()  # un rendu est en cours : replanifie
             return
+        from oaslides.settings import state
+        if state["running"]:
+            # pas de navigateur de rendu concurrent d'une génération
+            self.style_status.setText("génération en cours…")
+            self._style_timer.start()
+            return
         self._style_busy = True
         self.style_status.setText("rendu…")
         ori = self._style_orientation()
@@ -309,10 +361,15 @@ class StyleTabMixin:
         if pm.isNull():
             self.style_status.setText("aperçu illisible")
             return
-        self.style_view.setPixmap(pm.scaled(
-            self.style_view.size(), Qt.KeepAspectRatio,
-            Qt.SmoothTransformation))
+        self._style_pm = pm
+        self._style_view_update()
         self.style_status.setText("")
+
+    def _style_view_update(self):
+        if self._style_pm:
+            self.style_view.setPixmap(self._style_pm.scaled(
+                self.style_view.size(), Qt.KeepAspectRatio,
+                Qt.SmoothTransformation))
 
     # ——— identité visuelle ———
 
@@ -427,9 +484,14 @@ def _sample_event():
     buf = io.BytesIO()
     img.save(buf, "JPEG", quality=82)
     return {
-        "title": "Titre d'exemple — la diapo de démonstration",
-        "desc": "Un extrait de description pour juger du corps, des "
-                "retours à la ligne et de l'équilibre du bloc texte.",
+        "title": "Titre d'exemple volontairement long pour exercer "
+                 "le nombre de lignes du titre",
+        "desc": "Un extrait de description assez long pour juger du "
+                "corps, des retours à la ligne et de l'équilibre du "
+                "bloc texte — la phrase continue pour occuper "
+                "plusieurs lignes afin que les réglages « lignes "
+                "max » et « corps » aient un effet visible à "
+                "l'aperçu, même réduits.",
         "desc_md": "", "tag": "Catégorie",
         "img_data": "data:image/jpeg;base64," + base64.b64encode(
             buf.getvalue()).decode(),
