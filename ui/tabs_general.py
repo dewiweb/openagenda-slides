@@ -451,10 +451,23 @@ class GeneralTabMixin:
         def work():
             try:
                 from oaslides.net import get
+                from oaslides.version import VERSION
+                # releases/latest ignore les préreleases — or les betas
+                # sont marquées prerelease. On prend donc la liste :
+                # version courante beta → plus récente, beta incluse ;
+                # stable → uniquement les stables (pas de beta proposée)
                 d = get("https://api.github.com/repos/dewiweb/"
-                        "openagenda-slides/releases/latest").json()
-                self.update_done.emit(d.get("tag_name") or "",
-                                      d.get("html_url") or "")
+                        "openagenda-slides/releases?per_page=10").json()
+                beta = "-" in VERSION
+                tag = url = ""
+                for r in (d if isinstance(d, list) else []):
+                    if r.get("draft") or (r.get("prerelease")
+                                          and not beta):
+                        continue
+                    tag, url = (r.get("tag_name") or "",
+                                r.get("html_url") or "")
+                    break
+                self.update_done.emit(tag, url)
             except Exception as e:
                 self.update_done.emit("", str(e))
 
